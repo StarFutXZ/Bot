@@ -82,7 +82,7 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    # Constrói as secções separadas por linhas horizontais limpas
+                    # Constrói as secções separadas pela linha contínua elegante
                     blocos = []
                     if windows_exploits:
                         blocos.append("**Windows Exploits**\n" + "\n".join(windows_exploits))
@@ -91,8 +91,8 @@ async def enviar_ou_atualizar():
                     if windows_externals:
                         blocos.append("**Windows Externals**\n" + "\n".join(windows_externals))
                         
-                    # Junta as secções usando uma linha divisoria elegante do Discord
-                    descricao_final = "\n\n──────────────────\n\n".join(blocos)
+                    # Linha contínua exata a separar os blocos
+                    descricao_final = "\n\n──────────────────────────────\n\n".join(blocos)
                     descricao_final = descricao_final.strip()
                     
                     if id_ultima_mensagem and descricao_final == ultimo_conteudo_enviado:
