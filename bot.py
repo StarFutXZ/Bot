@@ -19,14 +19,14 @@ async def on_ready():
     try:
         canal = await bot.fetch_channel(CANAL_ID)
         async for mensagem in canal.history(limit=20):
-            if mensagem.author.id == bot.user.id and mensagem.embeds:
+            # Procura mensagens anteriores do bot que não sejam embeds (agora são texto puro)
+            if mensagem.author.id == bot.user.id:
                 id_ultima_mensagem = mensagem.id
                 print(f"Mensagem anterior detetada (ID: {id_ultima_mensagem}).")
                 break
     except Exception as e:
         print(f"Erro ao procurar mensagem anterior: {e}")
 
-    # Inicia o loop se já não estiver a correr
     if not enviar_ou_atualizar.is_running():
         enviar_ou_atualizar.start()
         print("Loop de 15 minutos iniciado com sucesso!")
@@ -68,7 +68,7 @@ async def enviar_ou_atualizar():
                             atualizado = exp.get("updateStatus", False)
                             
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
-                            linha = f"{nome} | `{versao}` | {status_emoji}"
+                            linha = f"• **{nome}** — `{versao}` {status_emoji}"
                             
                             nome_lower = nome.lower()
                             plataforma = str(exp.get("platform", "")).lower()
@@ -82,35 +82,30 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    descricao_final = ""
-                    if windows_exploits:
-                        descricao_final += "**Windows Exploits**\n" + "\n".join(windows_exploits) + "\n\n"
-                    if mac_exploits:
-                        descricao_final += "**Mac Exploits**\n" + "\n".join(mac_exploits) + "\n\n"
-                    if windows_externals:
-                        descricao_final += "**Windows Externals**\n" + "\n".join(windows_externals) + "\n\n"
-                        
-                    descricao_final = descricao_final.strip()
+                    # Construção do texto estruturado idêntico a um painel de logs limpo
+                    conteudo_final = "### ⚡ WhatExpsAre.Online | Exploit Status\n\n"
                     
-                    if id_ultima_mensagem and descricao_final == ultimo_conteudo_enviado:
+                    conteudo_final += "**Windows Exploits**\n"
+                    conteudo_final += "\n".join(windows_exploits) if windows_exploits else "*Nenhum disponível*"
+                    
+                    conteudo_final += "\n\n**Mac Exploits**\n"
+                    conteudo_final += "\n".join(mac_exploits) if mac_exploits else "*Nenhum disponível*"
+                    
+                    conteudo_final += "\n\n**Windows Externals**\n"
+                    conteudo_final += "\n".join(windows_externals) if windows_externals else "*Nenhum disponível*"
+                    
+                    conteudo_final += "\n\n-_Powered by weao.xyz_"
+                        
+                    conteudo_final = conteudo_final.strip()
+                    
+                    if id_ultima_mensagem and conteudo_final == ultimo_conteudo_enviado:
                         print("Sem alterações nos status. Nenhuma edição necessária.")
                         return
                     
-                    ultimo_conteudo_enviado = descricao_final
-                    
-                    embed = discord.Embed(
-                        title="WhatExpsAre.Online | Exploit Status",
-                        description=descricao_final,
-                        color=discord.Color.from_str("#ff0000")
-                    )
-                    embed.set_footer(text="Powered by weao.xyz")
+                    ultimo_conteudo_enviado = conteudo_final
                     
                 else:
-                    embed = discord.Embed(
-                        title="Erro",
-                        description="⚠️ Erro ao aceder à API de status da WEAO.",
-                        color=discord.Color.red()
-                    )
+                    conteudo_final = "### ⚡ WhatExpsAre.Online | Erro\n⚠️ Erro ao aceder à API de status da WEAO."
     except Exception as e:
         print(f"Erro no pedido HTTP: {e}")
         return
@@ -119,7 +114,7 @@ async def enviar_ou_atualizar():
     if id_ultima_mensagem:
         try:
             msg = await canal.fetch_message(id_ultima_mensagem)
-            await msg.edit(embed=embed)
+            await msg.edit(content=conteudo_final, embed=None)
             print("Mensagem editada com sucesso.")
             mensagem_editada = True
         except (discord.NotFound, discord.HTTPException):
@@ -133,7 +128,7 @@ async def enviar_ou_atualizar():
         except Exception:
             pass
             
-        nova_msg = await canal.send(embed=embed)
+        nova_msg = await canal.send(content=conteudo_final)
         id_ultima_mensagem = nova_msg.id
         print("Nova mensagem enviada.")
 
