@@ -1,6 +1,7 @@
 import discord
 from discord.ext import tasks, commands
 import aiohttp
+import os
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -23,7 +24,6 @@ async def enviar_ou_atualizar():
         print("Canal não encontrado!")
         return
 
-    # Vai buscar os dados atualizados à API da WEAO
     url = "https://weao.xyz/api/status/exploits"
     try:
         async with aiohttp.ClientSession() as session:
@@ -31,10 +31,9 @@ async def enviar_ou_atualizar():
                 if response.status == 200:
                     exploits = await response.json()
                     
-                    # Constrói o texto com o estado dos principais exploits
                     texto_status = "🟢 **WhatExpsAre.Online | Exploit Status**\n\n"
                     
-                    for exp in exploits[:10]: # Limita aos primeiros para caber na mensagem
+                    for exp in exploits[:10]:
                         nome = exp.get("title", "Desconhecido")
                         versao = exp.get("version", "")
                         atualizado = exp.get("updated", False)
@@ -46,18 +45,17 @@ async def enviar_ou_atualizar():
     except Exception as e:
         texto_status = f"⚠️ Erro na ligação: {e}"
 
-    # Apaga a mensagem anterior se existir
     if ultima_mensagem:
         try:
             await ultima_mensagem.delete()
         except discord.HTTPException:
             pass
 
-    # Envia a nova mensagem atualizada
     ultima_mensagem = await canal.send(texto_status)
 
 @enviar_ou_atualizar.before_loop
 async def antes_de_comecar():
     await bot.wait_until_ready()
 
-bot.run('MTIxNjQyMDc0NTY0MzU1NjkzNA.GX1qyG.3dsc58Z7ztxY06SOQPaNgtpoZFjG0yyjiT54H0')
+# O token agora vem de forma segura do Render, evitando que o GitHub o bloqueie
+bot.run(os.environ.get('DISCORD_TOKEN'))
