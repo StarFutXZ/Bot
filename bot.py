@@ -7,24 +7,30 @@ import asyncio
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-id_ultima_mensagem = None
+# Agora guardamos listas de IDs de mensagens para suportar múltiplos embeds se necessário
+ids_ultimas_mensagens = []
 ultimo_conteudo_enviado = None
 CANAL_ID = 1542669778999574599  # ID do teu canal
 
 @bot.event
 async def on_ready():
-    global id_ultima_mensagem
+    global ids_ultimas_mensagens
     print(f"Bot ligado com sucesso como {bot.user}")
     
     try:
         canal = await bot.fetch_channel(CANAL_ID)
+        # Procura mensagens anteriores do bot no canal
+        ids_ultimas_mensagens = []
         async for mensagem in canal.history(limit=20):
             if mensagem.author.id == bot.user.id and mensagem.embeds:
-                id_ultima_mensagem = mensagem.id
-                print(f"Mensagem anterior detetada (ID: {id_ultima_mensagem}).")
-                break
+                ids_ultimas_mensagens.append(mensagem.id)
+                # Se encontrarmos mensagens consecutivas do bot, apanhamos todas para atualizar depois
+                if len(ids_ultimas_mensagens) >= 3:
+                    break
+        if ids_ultimas_mensagens:
+            print(f"Mensagens anteriores detetadas (IDs: {ids_ultimas_mensagens}).")
     except Exception as e:
-        print(f"Erro ao procurar mensagem anterior: {e}")
+        print(f"Erro ao procurar mensagens anteriores: {e}")
 
     if not enviar_ou_atualizar.is_running():
         enviar_ou_atualizar.start()
@@ -32,7 +38,7 @@ async def on_ready():
 
 @tasks.loop(minutes=15)
 async def enviar_ou_atualizar():
-    global id_ultima_mensagem, ultimo_conteudo_enviado
+    global ids_ultimas_mensagens, ultimo_conteudo_enviado
     
     print("A verificar atualizações da API WEAO...")
     
@@ -67,7 +73,7 @@ async def enviar_ou_atualizar():
                             atualizado = exp.get("updateStatus", False)
                             
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
-                            linha = f"• **{nome}** — `{versao}` {status_emoji}"
+                            linha = f"{nome} | `{versao}` | {status_emoji}"
                             
                             nome_lower = nome.lower()
                             plataforma = str(exp.get("platform", "")).lower()
@@ -81,60 +87,80 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    # Constrói o Embed principal com o aspeto de painel em caixa, sem botões
-                    embed = discord.Embed(
-                        title="⚡ Exploit Status Tracker",
-                        description="A atualização dos executores foi detetada!",
-                        color=discord.Color.from_str("#2b2d31")
-                    )
-                    
+                    # Constrói blocos de texto por secção
+                    seccoes = []
                     if windows_exploits:
-                        embed.add_field(name="🖥️ Windows Exploits", value="\n".join(windows_exploits), inline=False)
+                        seccoes.append("**Windows Exploits**\n" + "\n".join(windows_exploits))
                     if mac_exploits:
-                        embed.add_field(name="💻 Mac Exploits", value="\n".join(mac_exploits), inline=False)
+                        seccoes.append("**Mac Exploits**\n" + "\n".join(mac_exploits))
                     if windows_externals:
-                        embed.add_field(name="🔌 Windows Externals", value="\n".join(windows_externals), inline=False)
+                        seccoes.append("**Windows Externals**\n" + "\n".join(windows_externals))
                         
-                    embed.set_footer(text="Powered by weao.xyz")
+                    conteudo_total = "\n\n".join(seccoes)
                     
-                    conteudo_comparacao = "".join(windows_exploits + mac_exploits + windows_externals)
-                    if id_ultima_mensagem and conteudo_comparacao == ultimo_conteudo_enviado:
+                    if ids_ultimas_mensagens and conteudo_total == ultimo_conteudo_enviado:
                         print("Sem alterações nos status. Nenhuma edição necessária.")
                         return
                     
-                    ultimo_conteudo_enviado = conteudo_comparacao
+                    ultimo_conteudo_enviado = conteudo_total
                     
+                    # Lógica inteligente para dividir em múltiplos embeds caso passe dos 3900 carateres (margem de segurança)
+                    embeds_para_enviar = []
+                    bloco_atual = ""
+                    
+                    for seccao in seccoes:
+                        if len(bloco_atual) + len(seccao) + 2 > 3900:
+                            # Cria o embed com o bloco atual e começa um novo
+                            emb = discord.Embed(
+                                title="WhatExpsAre.Online | Exploit Status (Continuação)",
+                                description=bloco_atual.strip(),
+                                color=discord.Color.from_rgb(40, 40, 45)
+                            )
+                            embeds_para_enviar.append(emb)
+                            bloco_atual = seccao + "\n\n"
+                        else:
+                            bloco_atual += seccao + "\n\n"
+                            
+                    # Adiciona o último bloco restante
+                    if bloco_atual:
+                        titulo = "WhatExpsAre.Online | Exploit Status" if len(embeds_para_enviar) == 0 else "WhatExpsAre.Online | Exploit Status (Continuação)"
+                        emb = discord.Embed(
+                            title=titulo,
+                            description=bloco_atual.strip(),
+                            color=discord.Color.from_rgb(40, 40, 45)
+                        )
+                        # Coloca o rodapé apenas no último embed
+                        emb.set_footer(text="Powered by weao.xyz")
+                        embeds_para_enviar.append(emb)
+                        
                 else:
-                    embed = discord.Embed(
+                    embeds_para_enviar = [discord.Embed(
                         title="Erro",
                         description="⚠️ Erro ao aceder à API de status da WEAO.",
                         color=discord.Color.red()
-                    )
+                    )]
     except Exception as e:
         print(f"Erro no pedido HTTP: {e}")
         return
 
-    mensagem_editada = False
-    if id_ultima_mensagem:
-        try:
-            msg = await canal.fetch_message(id_ultima_mensagem)
-            await msg.edit(embed=embed)
-            print("Mensagem editada com sucesso.")
-            mensagem_editada = True
-        except (discord.NotFound, discord.HTTPException):
-            mensagem_editada = False
+    # Apaga as mensagens antigas do bot para evitar acumulação de lixo no canal
+    if ids_ultimas_mensagens:
+        for msg_id in ids_ultimas_mensagens:
+            try:
+                msg_antiga = await canal.fetch_message(msg_id)
+                await msg_antiga.delete()
+            except Exception:
+                pass
+        ids_ultimas_mensagens = []
 
-    if not mensagem_editada:
-        try:
-            async for mensagem in canal.history(limit=10):
-                if mensagem.author.id == bot.user.id:
-                    await mensagem.delete()
-        except Exception:
-            pass
-            
-        nova_msg = await canal.send(embed=embed)
-        id_ultima_mensagem = nova_msg.id
-        print("Nova mensagem enviada.")
+    # Envia os novos embeds (pode ser 1 ou mais se exceder o limite)
+    try:
+        # O discord permite enviar até 10 embeds numa única mensagem
+        nova_msg = await canal.send(embeds=embeds_para_enviar)
+        ids_ultimas_mensagens = [nova_msg.id]
+        print("Status atualizados com sucesso (múltiplos embeds tratados em mensagem única).")
+    except Exception as e:
+        print(f"Erro ao enviar a mensagem com os embeds: {e}")
 
 @enviar_ou_atualizar.before_loop
 async def antes_de_comecar():
@@ -145,4 +171,3 @@ if not token:
     print("ERRO: Variável DISCORD_TOKEN em falta!")
 else:
     bot.run(token)
-
