@@ -1,7 +1,7 @@
 import discord
 from discord.ext import tasks, commands
 import aiohttp
-from aiohttp import web
+import aiohttp.web as web
 import os
 import asyncio
 
@@ -30,13 +30,12 @@ async def on_ready():
     global id_ultima_mensagem
     print(f"Bot ligado com sucesso como {bot.user}")
     
-    # Tenta encontrar uma mensagem anterior do próprio bot no canal para evitar duplicados
     try:
         canal = await bot.fetch_channel(CANAL_ID)
         async for mensagem in canal.history(limit=20):
             if mensagem.author.id == bot.user.id and mensagem.embeds:
                 id_ultima_mensagem = mensagem.id
-                print(f"Mensagem anterior detetada (ID: {id_ultima_mensagem}). O bot vai apenas editá-la.")
+                print(f"Mensagem anterior detetada (ID: {id_ultima_mensagem}).")
                 break
     except Exception as e:
         print(f"Erro ao procurar mensagem anterior: {e}")
@@ -73,16 +72,17 @@ async def enviar_ou_atualizar():
                             versao = exp.get("version", "")
                             atualizado = exp.get("updateStatus", False)
                             
-                            # Emojis corrigidos para ✅ e ❌ (ou podes alterar se preferires)
-                            status_emoji = "✅" if atualizado else "❌"
+                            status_emoji = "🟩" if atualizado else "🟥"
                             linha = f"{nome} | `{versao}` | {status_emoji}"
                             
+                            # Filtros precisos para separar corretamente as categorias
+                            is_external = exp.get("isExternal", False) or exp.get("external", False)
                             tipo = str(exp.get("type", "")).lower()
                             plataforma = str(exp.get("platform", "")).lower()
                             
                             if "mac" in plataforma or "mac" in tipo:
                                 mac_exploits.append(linha)
-                            elif "external" in tipo or "external" in plataforma:
+                            elif is_external or "external" in tipo or "externals" in tipo:
                                 windows_externals.append(linha)
                             else:
                                 windows_exploits.append(linha)
@@ -123,7 +123,6 @@ async def enviar_ou_atualizar():
             color=discord.Color.red()
         )
 
-    # Tenta editar a mensagem existente
     mensagem_editada = False
     if id_ultima_mensagem:
         try:
@@ -133,7 +132,6 @@ async def enviar_ou_atualizar():
         except (discord.NotFound, discord.HTTPException):
             mensagem_editada = False
 
-    # Se não conseguiu editar, limpa mensagens antigas do bot no canal e envia uma nova
     if not mensagem_editada:
         try:
             async for mensagem in canal.history(limit=10):
