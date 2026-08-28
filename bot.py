@@ -33,7 +33,8 @@ async def on_ready():
         enviar_ou_atualizar.start()
         print("Loop de 15 minutos iniciado com sucesso!")
 
-async def enviar_ou_atualizar_logic():
+@tasks.loop(minutes=15)
+async def enviar_ou_atualizar():
     global id_ultima_mensagem, ultimo_conteudo_enviado
     
     print("A verificar atualizações da API WEAO...")
@@ -102,7 +103,6 @@ async def enviar_ou_atualizar_logic():
                         color=discord.Color.from_rgb(40, 40, 45)
                     )
                     
-                    # Obtém a hora exata para o fuso horário de Portugal (Europe/Lisbon)
                     hora_portugal = datetime.now(ZoneInfo("Europe/Lisbon")).strftime('%H:%M')
                     embed.set_footer(text=f"Powered by weao.xyz • Atualizado às {hora_portugal}")
                     
@@ -138,14 +138,9 @@ async def enviar_ou_atualizar_logic():
         id_ultima_mensagem = nova_msg.id
         print("Nova mensagem enviada.")
 
-@tasks.loop(minutes=15)
-async def enviar_ou_atualizar():
-    await enviar_ou_atualizar_logic()
-
 @enviar_ou_atualizar.before_loop
 async def antes_de_comecar():
     await bot.wait_until_ready()
-    await enviar_ou_atualizar_logic()
 
 # --- Servidor HTTP para satisfazer o Web Service do Render ---
 async def handle(request):
