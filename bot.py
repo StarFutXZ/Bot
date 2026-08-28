@@ -3,6 +3,7 @@ from discord.ext import tasks, commands
 import aiohttp
 import os
 import asyncio
+from aiohttp import web
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -26,7 +27,6 @@ async def on_ready():
     except Exception as e:
         print(f"Erro ao procurar mensagem anterior: {e}")
 
-    # Inicia o loop se já não estiver a correr
     if not enviar_ou_atualizar.is_running():
         enviar_ou_atualizar.start()
         print("Loop de 15 minutos iniciado com sucesso!")
@@ -82,7 +82,6 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    # Constrói as secções separadas pela linha contínua elegante
                     blocos = []
                     if windows_exploits:
                         blocos.append("**Windows Exploits**\n" + "\n".join(windows_exploits))
@@ -91,7 +90,6 @@ async def enviar_ou_atualizar():
                     if windows_externals:
                         blocos.append("**Windows Externals**\n" + "\n".join(windows_externals))
                         
-                    # Linha contínua exata a separar os blocos
                     descricao_final = "\n\n──────────────────────────────\n\n".join(blocos)
                     descricao_final = descricao_final.strip()
                     
@@ -144,8 +142,31 @@ async def enviar_ou_atualizar():
 async def antes_de_comecar():
     await bot.wait_until_ready()
 
-token = os.environ.get('DISCORD_TOKEN')
-if not token:
-    print("ERRO: Variável DISCORD_TOKEN em falta!")
-else:
-    bot.run(token)
+# --- Servidor HTTP para satisfazer o Web Service do Render ---
+async def handle(request):
+    return web.Response(text="Bot do Discord a funcionar 24/7!")
+
+async def start_web_server():
+    app = web.Application()
+    app.router.add_get("/", handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    # O Render atribui dinamicamente uma porta através da variável PORT
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    print(f"Servidor web a correr na porta {port}")
+
+async def main():
+    token = os.environ.get('DISCORD_TOKEN')
+    if not token:
+        print("ERRO: Variável DISCORD_TOKEN em falta!")
+        return
+
+    # Inicia o servidor web em paralelo com o bot do Discord
+    await start_web_server()
+    await bot.start(token)
+
+if __name__ == "__main__":
+    asyncio.run(main())
