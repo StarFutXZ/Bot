@@ -42,7 +42,7 @@ async def enviar_ou_atualizar():
         print("Erro ao aceder ao canal do Discord.")
         return
 
-    url = "https://weao.xyz/api/status/exploits"
+    url = "[https://weao.xyz/api/status/exploits](https://weao.xyz/api/status/exploits)"
     headers = {"User-Agent": "WEAO-3PService"}
     
     try:
@@ -66,8 +66,8 @@ async def enviar_ou_atualizar():
                             versao = exp.get("version", "")
                             atualizado = exp.get("updateStatus", False)
                             
-                            status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
-                            linha = f"`{nome}` • `{versao}` {status_emoji}"
+                            status_emoji = "✅" if atualizado else "❌"
+                            linha = f"• {nome:<12} | {versao:<8} {status_emoji}"
                             
                             nome_lower = nome.lower()
                             plataforma = str(exp.get("platform", "")).lower()
@@ -81,33 +81,43 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    # Criação do embed estruturado em caixa de painel profissional
-                    embed = discord.Embed(
-                        title="⚡ WhatExpsAre.Online | Exploit Status",
-                        color=discord.Color.from_str("#ff0000")
-                    )
+                    # Constrói o painel dentro de um bloco de código fechado (caixa)
+                    bloco_texto = "========================================\n"
+                    bloco_texto += "        WHATEXPSARE.ONLINE STATUS       \n"
+                    bloco_texto += "========================================\n\n"
                     
                     if windows_exploits:
-                        embed.add_field(name="🖥️ Windows Exploits", value="\n".join(windows_exploits), inline=False)
-                    if mac_exploits:
-                        embed.add_field(name="💻 Mac Exploits", value="\n".join(mac_exploits), inline=False)
-                    if windows_externals:
-                        embed.add_field(name="🔌 Windows Externals", value="\n".join(windows_externals), inline=False)
+                        bloco_texto += "[ WINDOWS EXPLOITS ]\n"
+                        bloco_texto += "\n".join(windows_exploits) + "\n\n"
                         
-                    embed.set_footer(text="Powered by weao.xyz • Atualizado automaticamente")
+                    if mac_exploits:
+                        bloco_texto += "[ MAC EXPLOITS ]\n"
+                        bloco_texto += "\n".join(mac_exploits) + "\n\n"
+                        
+                    if windows_externals:
+                        bloco_texto += "[ WINDOWS EXTERNALS ]\n"
+                        bloco_texto += "\n".join(windows_externals) + "\n\n"
+                        
+                    bloco_texto += "----------------------------------------\n"
+                    bloco_texto += "Powered by weao.xyz"
                     
-                    # Identificador para verificar mudanças
-                    conteudo_comparacao = str(windows_exploits) + str(mac_exploits) + str(windows_externals)
-                    if id_ultima_mensagem and conteudo_comparacao == ultimo_conteudo_enviado:
+                    descricao_final = f"```\n{bloco_texto}\n```"
+                    
+                    if id_ultima_mensagem and descricao_final == ultimo_conteudo_enviado:
                         print("Sem alterações nos status. Nenhuma edição necessária.")
                         return
                     
-                    ultimo_conteudo_enviado = conteudo_comparacao
+                    ultimo_conteudo_enviado = descricao_final
+                    
+                    embed = discord.Embed(
+                        description=descricao_final,
+                        color=discord.Color.from_str("#ff0000")
+                    )
                     
                 else:
                     embed = discord.Embed(
                         title="Erro",
-                        description="⚠️ Erro ao aceder à API de status da WEAO.",
+                        description="```\n⚠️ Erro ao aceder à API de status da WEAO.\n```",
                         color=discord.Color.red()
                     )
     except Exception as e:
