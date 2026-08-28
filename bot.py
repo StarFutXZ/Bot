@@ -6,9 +6,9 @@ import os
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ID da mensagem anterior guardado em memória
 id_ultima_mensagem = None
-CANAL_ID = 1542669778999574599  # Lembra-te de meter o ID real do teu canal!
+ultimo_conteudo_enviado = None  # Guarda o texto da última descrição para comparar
+CANAL_ID = 1542669778999574599  # Substitui pelo ID real do teu canal
 
 @bot.event
 async def on_ready():
@@ -18,51 +18,96 @@ async def on_ready():
 
 @tasks.loop(minutes=15)
 async def enviar_ou_atualizar():
-    global id_ultima_mensagem
+    global id_ultima_mensagem, ultimo_conteudo_enviado
     
     try:
         canal = await bot.fetch_channel(CANAL_ID)
-    except discord.NotFound:
-        print("Canal não encontrado! Verifica se o ID está correto.")
-        return
-    except discord.Forbidden:
-        print("O bot não tem permissões para aceder a este canal!")
+    except (discord.NotFound, discord.Forbidden):
+        print("Erro ao aceder ao canal.")
         return
 
-    # Procura a resposta na API da WEAO
     url = "https://weao.xyz/api/status/exploits"
+    headers = {"User-Agent": "WEAO-3PService"}
+    
     try:
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(url) as response:
                 if response.status == 200:
-                    exploits = await response.json()
+                    dados = await response.json()
                     
-                    texto_status = "🟢 **WhatExpsAre.Online | Exploit Status**\n\n"
+                    windows_exploits = []
+                    mac_exploits = []
+                    windows_externals = []
                     
-                    for exp in exploits[:10]:
-                        nome = exp.get("title", "Desconhecido")
-                        versao = exp.get("version", "")
-                        atualizado = exp.get("updated", False)
-                        status_emoji = "✅" if atualizado else "❌"
-                        texto_status += f"- **{nome}** | `{versao}` | {status_emoji}\n"
+                    if isinstance(dados, list):
+                        for exp in dados:
+                            nome = exp.get("title", "Desconhecido")
+                            versao = exp.get("version", "")
+                            atualizado = exp.get("updateStatus", False)
+                            
+                            status_emoji = "🟩" if atualizado else "🟥"
+                            linha = f"{nome} | `{versao}` | {status_emoji}"
+                            
+                            tipo = str(exp.get("type", "")).lower()
+                            plataforma = str(exp.get("platform", "")).lower()
+                            
+                            if "mac" in plataforma or "mac" in tipo:
+                                mac_exploits.append(linha)
+                            elif "external" in tipo or "external" in plataforma:
+                                windows_externals.append(linha)
+                            else:
+                                windows_exploits.append(linha)
+                    
+                    descricao_final = ""
+                    if windows_exploits:
+                        descricao_final += "**Windows Exploits**\n" + "\n".join(windows_exploits) + "\n\n"
+                    if mac_exploits:
+                        descricao_final += "**Mac Exploits**\n" + "\n".join(mac_exploits) + "\n\n"
+                    if windows_externals:
+                        descricao_final += "**Windows Externals**\n" + "\n".join(windows_externals) + "\n\n"
+                        
+                    descricao_final = descricao_final.strip()
+                    
+                    # Se o conteúdo for exatamente igual ao anterior e a mensagem já existir, não faz nada!
+                    if id_ultima_mensagem and descricao_final == ultimo_conteudo_enviado:
+                        print("Sem alterações nos exploits. Nenhuma edição necessária.")
+                        return
+                    
+                    # Atualiza o registo do último conteúdo
+                    ultimo_conteudo_enviado = descricao_final
+                    
+                    embed = discord.Embed(
+                        title="WhatExpsAre.Online | Exploit Status",
+                        description=descricao_final,
+                        color=discord.Color.from_rgb(40, 40, 45)
+                    )
+                    embed.set_footer(text="Powered by weao.xyz")
+                    
                 else:
-                    texto_status = "⚠️ Erro ao aceder à API de status da WEAO."
+                    embed = discord.Embed(
+                        title="Erro",
+                        description="⚠️ Erro ao aceder à API de status da WEAO.",
+                        color=discord.Color.red()
+                    )
     except Exception as e:
-        texto_status = f"⚠️ Erro na ligação: {e}"
+        embed = discord.Embed(
+            title="Erro de Ligação",
+            description=f"⚠️ Erro: {e}",
+            color=discord.Color.red()
+        )
 
-    # Tenta editar a mensagem anterior para não encher o chat
+    # Envia ou edita a mensagem apenas se houve mudanças ou se for a primeira vez
     mensagem_editada = False
     if id_ultima_mensagem:
         try:
             msg = await canal.fetch_message(id_ultima_mensagem)
-            await msg.edit(content=texto_status)
+            await msg.edit(embed=embed)
             mensagem_editada = True
         except (discord.NotFound, discord.HTTPException):
             mensagem_editada = False
 
-    # Se não conseguiu editar (ex: primeira execução ou mensagem foi apagada), envia uma nova
     if not mensagem_editada:
-        nova_msg = await canal.send(texto_status)
+        nova_msg = await canal.send(embed=embed)
         id_ultima_mensagem = nova_msg.id
 
 @enviar_ou_atualizar.before_loop
