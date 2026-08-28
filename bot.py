@@ -95,8 +95,6 @@ async def enviar_ou_atualizar_logic():
                     descricao_final = "\n\n──────────────────────────────\n\n".join(blocos)
                     descricao_final = descricao_final.strip()
                     
-                    # ATENÇÃO: Removi a restrição de bloquear se o conteúdo for igual, 
-                    # para forçar a edição/envio caso a mensagem anterior se tenha perdido.
                     ultimo_conteudo_enviado = descricao_final
                     
                     embed = discord.Embed(
@@ -104,7 +102,9 @@ async def enviar_ou_atualizar_logic():
                         description=descricao_final,
                         color=discord.Color.from_rgb(40, 40, 45)
                     )
-                    embed.set_footer(text="Powered by weao.xyz")
+                    # Adiciona a hora atual no rodapé para saberes quando atualizou
+                    hora_atual = discord.utils.utcnow().strftime('%H:%M')
+                    embed.set_footer(text=f"Powered by weao.xyz • Atualizado às {hora_atual}")
                     
                 else:
                     embed = discord.Embed(
