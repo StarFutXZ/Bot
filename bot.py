@@ -10,10 +10,11 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 id_ultima_mensagem = None
 ultimo_conteudo_enviado = None
-CANAL_ID = 1542669778999574599  # Substitui pelo ID real do teu canal
+CANAL_ID = 1542669778999574599  # ID do teu canal
 
+# Servidor HTTP leve para satisfazer o Render sem bloquear o asyncio
 async def handle_ping(request):
-    return web.Response(text="Bot is running!")
+    return web.Response(text="Bot is online and active!")
 
 async def start_web_server():
     app = web.Application()
@@ -23,13 +24,14 @@ async def start_web_server():
     port = int(os.environ.get("PORT", 8080))
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
-    print(f"Servidor web a correr na porta {port}")
+    print(f"Servidor HTTP a escutar na porta {port}")
 
 @bot.event
 async def on_ready():
     global id_ultima_mensagem
     print(f"Bot ligado com sucesso como {bot.user}")
     
+    # Procura mensagem anterior enviada pelo próprio bot
     try:
         canal = await bot.fetch_channel(CANAL_ID)
         async for mensagem in canal.history(limit=20):
@@ -40,6 +42,7 @@ async def on_ready():
     except Exception as e:
         print(f"Erro ao procurar mensagem anterior: {e}")
 
+    # Inicia o loop continuo de 15 em 15 minutos se ainda nao estiver a correr
     if not enviar_ou_atualizar.is_running():
         enviar_ou_atualizar.start()
 
@@ -47,10 +50,12 @@ async def on_ready():
 async def enviar_ou_atualizar():
     global id_ultima_mensagem, ultimo_conteudo_enviado
     
+    print("A verificar atualizações da API WEAO...")
+    
     try:
         canal = await bot.fetch_channel(CANAL_ID)
     except (discord.NotFound, discord.Forbidden):
-        print("Erro ao aceder ao canal.")
+        print("Erro ao aceder ao canal do Discord.")
         return
 
     url = "https://weao.xyz/api/status/exploits"
@@ -75,7 +80,6 @@ async def enviar_ou_atualizar():
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
                             linha = f"{nome} | `{versao}` | {status_emoji}"
                             
-                            # Captura rigorosa de propriedades da API para detetar se é externo
                             is_external = exp.get("isExternal", False) or exp.get("external", False)
                             tipo = str(exp.get("type", "")).lower()
                             plataforma = str(exp.get("platform", "")).lower()
@@ -99,7 +103,7 @@ async def enviar_ou_atualizar():
                     descricao_final = descricao_final.strip()
                     
                     if id_ultima_mensagem and descricao_final == ultimo_conteudo_enviado:
-                        print("Sem alterações nos exploits. Nenhuma edição necessária.")
+                        print("Sem alterações nos status. Nenhuma edição necessária.")
                         return
                     
                     ultimo_conteudo_enviado = descricao_final
@@ -129,6 +133,7 @@ async def enviar_ou_atualizar():
         try:
             msg = await canal.fetch_message(id_ultima_mensagem)
             await msg.edit(embed=embed)
+            print("Mensagem editada com sucesso com novo status.")
             mensagem_editada = True
         except (discord.NotFound, discord.HTTPException):
             mensagem_editada = False
@@ -143,14 +148,22 @@ async def enviar_ou_atualizar():
             
         nova_msg = await canal.send(embed=embed)
         id_ultima_mensagem = nova_msg.id
+        print("Nova mensagem enviada e guardada para edições futuras.")
 
 @enviar_ou_atualizar.before_loop
 async def antes_de_comecar():
     await bot.wait_until_ready()
 
 async def main():
-    await start_web_server()
-    await bot.start(os.environ.get('DISCORD_TOKEN'))
+    # Arranca o servidor web em background task sem bloquear o bot
+    asyncio.create_task(start_web_server())
+    
+    token = os.environ.get('DISCORD_TOKEN')
+    if not token:
+        print("ERRO: Variável DISCORD_TOKEN não encontrada nas Environment Variables do Render!")
+        return
+        
+    await bot.start(token)
 
 if __name__ == "__main__":
     asyncio.run(main())
