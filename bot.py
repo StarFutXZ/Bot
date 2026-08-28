@@ -7,7 +7,6 @@ import asyncio
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Agora guardamos listas de IDs de mensagens para suportar múltiplos embeds se necessário
 ids_ultimas_mensagens = []
 ultimo_conteudo_enviado = None
 CANAL_ID = 1542669778999574599  # ID do teu canal
@@ -19,12 +18,10 @@ async def on_ready():
     
     try:
         canal = await bot.fetch_channel(CANAL_ID)
-        # Procura mensagens anteriores do bot no canal
         ids_ultimas_mensagens = []
         async for mensagem in canal.history(limit=20):
             if mensagem.author.id == bot.user.id and mensagem.embeds:
                 ids_ultimas_mensagens.append(mensagem.id)
-                # Se encontrarmos mensagens consecutivas do bot, apanhamos todas para atualizar depois
                 if len(ids_ultimas_mensagens) >= 3:
                     break
         if ids_ultimas_mensagens:
@@ -73,8 +70,6 @@ async def enviar_ou_atualizar():
                             atualizado = exp.get("updateStatus", False)
                             
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
-                            
-                            # Visual alterado para ficar exatamente igual ao da imagem (Nome | `Versão` | Emoji)
                             linha = f"{nome} | `{versao}` | {status_emoji}"
                             
                             nome_lower = nome.lower()
@@ -89,7 +84,7 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    # Constrói blocos de texto por secção
+                    # Constrói blocos de texto por secção exatamente como tinhas no original
                     seccoes = []
                     if windows_exploits:
                         seccoes.append("**Windows Exploits**\n" + "\n".join(windows_exploits))
@@ -106,32 +101,28 @@ async def enviar_ou_atualizar():
                     
                     ultimo_conteudo_enviado = conteudo_total
                     
-                    # Lógica inteligente para dividir em múltiplos embeds caso passe dos 3900 carateres (margem de segurança)
                     embeds_para_enviar = []
                     bloco_atual = ""
                     
                     for seccao in seccoes:
                         if len(bloco_atual) + len(seccao) + 2 > 3900:
-                            # Cria o embed com o bloco atual e começa um novo
                             emb = discord.Embed(
                                 title="WhatExpsAre.Online | Exploit Status (Continuação)",
                                 description=bloco_atual.strip(),
-                                color=discord.Color.from_rgb(40, 40, 45)
+                                color=discord.Color.from_rgb(30, 30, 35)
                             )
                             embeds_para_enviar.append(emb)
                             bloco_atual = seccao + "\n\n"
                         else:
                             bloco_atual += seccao + "\n\n"
                             
-                    # Adiciona o último bloco restante
                     if bloco_atual:
                         titulo = "WhatExpsAre.Online | Exploit Status" if len(embeds_para_enviar) == 0 else "WhatExpsAre.Online | Exploit Status (Continuação)"
                         emb = discord.Embed(
                             title=titulo,
                             description=bloco_atual.strip(),
-                            color=discord.Color.from_rgb(40, 40, 45)
+                            color=discord.Color.from_rgb(30, 30, 35)
                         )
-                        # Coloca o rodapé apenas no último embed
                         emb.set_footer(text="Powered by weao.xyz")
                         embeds_para_enviar.append(emb)
                         
@@ -145,7 +136,6 @@ async def enviar_ou_atualizar():
         print(f"Erro no pedido HTTP: {e}")
         return
 
-    # Apaga as mensagens antigas do bot para evitar acumulação de lixo no canal
     if ids_ultimas_mensagens:
         for msg_id in ids_ultimas_mensagens:
             try:
@@ -155,12 +145,10 @@ async def enviar_ou_atualizar():
                 pass
         ids_ultimas_mensagens = []
 
-    # Envia os novos embeds (pode ser 1 ou mais se exceder o limite)
     try:
-        # O discord permite enviar até 10 embeds numa única mensagem
         nova_msg = await canal.send(embeds=embeds_para_enviar)
         ids_ultimas_mensagens = [nova_msg.id]
-        print("Status atualizados com sucesso (múltiplos embeds tratados em mensagem única).")
+        print("Status atualizados com sucesso!")
     except Exception as e:
         print(f"Erro ao enviar a mensagem com os embeds: {e}")
 
