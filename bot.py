@@ -12,9 +12,8 @@ id_ultima_mensagem = None
 ultimo_conteudo_enviado = None
 CANAL_ID = 1542669778999574599  # ID do teu canal
 
-# Servidor HTTP leve para satisfazer o Render sem bloquear o asyncio
 async def handle_ping(request):
-    return web.Response(text="Bot is online and active!")
+    return web.Response(text="Bot is running!")
 
 async def start_web_server():
     app = web.Application()
@@ -31,7 +30,6 @@ async def on_ready():
     global id_ultima_mensagem
     print(f"Bot ligado com sucesso como {bot.user}")
     
-    # Procura mensagem anterior enviada pelo próprio bot
     try:
         canal = await bot.fetch_channel(CANAL_ID)
         async for mensagem in canal.history(limit=20):
@@ -42,7 +40,6 @@ async def on_ready():
     except Exception as e:
         print(f"Erro ao procurar mensagem anterior: {e}")
 
-    # Inicia o loop continuo de 15 em 15 minutos se ainda nao estiver a correr
     if not enviar_ou_atualizar.is_running():
         enviar_ou_atualizar.start()
 
@@ -71,6 +68,12 @@ async def enviar_ou_atualizar():
                     mac_exploits = []
                     windows_externals = []
                     
+                    # Lista fixa de nomes conhecidos de Windows Externals para garantir que caem sempre no sítio certo
+                    nomes_externals_conhecidos = [
+                        "serotonin", "matcha", "severe", "lumen", "matrix hub", 
+                        "melatonin", "axis", "photon", "ronin", "dx9ware v2", "dx9ware"
+                    ]
+                    
                     if isinstance(dados, list):
                         for exp in dados:
                             nome = exp.get("title", "Desconhecido")
@@ -80,14 +83,15 @@ async def enviar_ou_atualizar():
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
                             linha = f"{nome} | `{versao}` | {status_emoji}"
                             
-                            is_external = exp.get("isExternal", False) or exp.get("external", False)
-                            tipo = str(exp.get("type", "")).lower()
+                            nome_lower = nome.lower()
                             plataforma = str(exp.get("platform", "")).lower()
-                            categoria = str(exp.get("category", "")).lower()
+                            tipo = str(exp.get("type", "")).lower()
+                            is_external = exp.get("isExternal", False) or exp.get("external", False)
                             
-                            if "mac" in plataforma or "mac" in tipo or "mac" in categoria:
+                            # Condição blindada de separação
+                            if "mac" in plataforma or "mac" in tipo or "mac" in nome_lower:
                                 mac_exploits.append(linha)
-                            elif is_external or "external" in tipo or "externals" in tipo or "external" in categoria:
+                            elif is_external or any(ext in nome_lower for ext in nomes_externals_conhecidos) or "external" in tipo:
                                 windows_externals.append(linha)
                             else:
                                 windows_exploits.append(linha)
@@ -133,7 +137,7 @@ async def enviar_ou_atualizar():
         try:
             msg = await canal.fetch_message(id_ultima_mensagem)
             await msg.edit(embed=embed)
-            print("Mensagem editada com sucesso com novo status.")
+            print("Mensagem editada com sucesso.")
             mensagem_editada = True
         except (discord.NotFound, discord.HTTPException):
             mensagem_editada = False
@@ -148,19 +152,18 @@ async def enviar_ou_atualizar():
             
         nova_msg = await canal.send(embed=embed)
         id_ultima_mensagem = nova_msg.id
-        print("Nova mensagem enviada e guardada para edições futuras.")
+        print("Nova mensagem enviada.")
 
 @enviar_ou_atualizar.before_loop
 async def antes_de_comecar():
     await bot.wait_until_ready()
 
 async def main():
-    # Arranca o servidor web em background task sem bloquear o bot
     asyncio.create_task(start_web_server())
     
     token = os.environ.get('DISCORD_TOKEN')
     if not token:
-        print("ERRO: Variável DISCORD_TOKEN não encontrada nas Environment Variables do Render!")
+        print("ERRO: Variável DISCORD_TOKEN em falta!")
         return
         
     await bot.start(token)
