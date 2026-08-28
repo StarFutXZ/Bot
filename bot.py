@@ -101,7 +101,7 @@ async def enviar_ou_atualizar():
                     embed = discord.Embed(
                         title="WhatExpsAre.Online | Exploit Status",
                         description=descricao_final,
-                        color=discord.Color.from_rgb(40, 40, 45)
+                        color=discord.Color.from_str("#ff0000")
                     )
                     embed.set_footer(text="Powered by weao.xyz")
                     
