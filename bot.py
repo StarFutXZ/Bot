@@ -72,18 +72,18 @@ async def enviar_ou_atualizar():
                             versao = exp.get("version", "")
                             atualizado = exp.get("updateStatus", False)
                             
-                            # Emojis personalizados integrados para verde e vermelho
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
-                            
                             linha = f"{nome} | `{versao}` | {status_emoji}"
                             
+                            # Captura rigorosa de propriedades da API para detetar se é externo
+                            is_external = exp.get("isExternal", False) or exp.get("external", False)
                             tipo = str(exp.get("type", "")).lower()
                             plataforma = str(exp.get("platform", "")).lower()
-                            is_external = exp.get("isExternal", False) or exp.get("external", False) or "external" in tipo or "externals" in tipo
+                            categoria = str(exp.get("category", "")).lower()
                             
-                            if "mac" in plataforma or "mac" in tipo:
+                            if "mac" in plataforma or "mac" in tipo or "mac" in categoria:
                                 mac_exploits.append(linha)
-                            elif is_external:
+                            elif is_external or "external" in tipo or "externals" in tipo or "external" in categoria:
                                 windows_externals.append(linha)
                             else:
                                 windows_exploits.append(linha)
