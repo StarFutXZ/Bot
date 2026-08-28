@@ -11,6 +11,28 @@ id_ultima_mensagem = None
 ultimo_conteudo_enviado = None
 CANAL_ID = 1542669778999574599
 
+def criar_campos_seguros(nome_campo, lista_itens, embed):
+    """Divide a lista em vários campos caso ultrapasse o limite de 1024 carateres do Discord."""
+    if not lista_itens:
+        return
+    
+    bloco_atual = ""
+    indice = 1
+    
+    for item in lista_itens:
+        # Se adicionar o próximo item passar dos 1000 carateres, criamos um novo campo para evitar erros
+        if len(bloco_atual) + len(item) + 1 > 1000:
+            nome_f = f"{nome_campo} (Parte {indice})" if indice > 1 else nome_campo
+            embed.add_field(name=nome_f, value=bloco_atual, inline=False)
+            bloco_atual = item + "\n"
+            indice += 1
+        else:
+            bloco_atual += item + "\n"
+            
+    if bloco_atual:
+        nome_f = f"{nome_campo} (Parte {indice})" if indice > 1 else nome_campo
+        embed.add_field(name=nome_f, value=bloco_atual, inline=False)
+
 @bot.event
 async def on_ready():
     global id_ultima_mensagem
@@ -69,7 +91,6 @@ async def enviar_ou_atualizar():
                             status_str = "Online / Atualizado" if atualizado else "Desatualizado"
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
                             
-                            # Estrutura idêntica à imagem de referência (blocos verticais com campos e linhas)
                             bloco_item = (
                                 f"### {nome}\n"
                                 f"**Version**\n`{versao}`\n"
@@ -89,19 +110,16 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(bloco_item)
                     
-                    # Mensagem principal com o visual de painel unificado em tom escuro
                     embed = discord.Embed(
                         title="A Roblox update has been detected!",
                         description="**@Att pc**\nRoblox has just updated! This version is now being used by players.",
                         color=discord.Color.from_str("#2b2d31")
                     )
                     
-                    if windows_exploits:
-                        embed.add_field(name="🖥️ Windows Exploits", value="\n".join(windows_exploits), inline=False)
-                    if mac_exploits:
-                        embed.add_field(name="💻 Mac Exploits", value="\n".join(mac_exploits), inline=False)
-                    if windows_externals:
-                        embed.add_field(name="🔌 Windows Externals", value="\n".join(windows_externals), inline=False)
+                    # Adiciona os campos de forma segura dividindo caso excedam 1024 carateres
+                    criar_campos_seguros("🖥️ Windows Exploits", windows_exploits, embed)
+                    criar_campos_seguros("💻 Mac Exploits", mac_exploits, embed)
+                    criar_campos_seguros("🔌 Windows Externals", windows_externals, embed)
                         
                     embed.set_footer(text="Powered by weao.xyz")
                     
