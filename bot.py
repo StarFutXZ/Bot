@@ -67,8 +67,7 @@ async def enviar_ou_atualizar():
                             atualizado = exp.get("updateStatus", False)
                             
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
-                            # Formato em linha de bloco estilo log
-                            linha = f"• **{nome}**\n  `{versao}` {status_emoji}"
+                            linha = f"`{nome}` • `{versao}` {status_emoji}"
                             
                             nome_lower = nome.lower()
                             plataforma = str(exp.get("platform", "")).lower()
@@ -82,32 +81,28 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    # Estrutura limpa em formato de painel
-                    descricao_final = "```ansi\n" # Inicia bloco de estilo técnico
-                    descricao_final = ""
+                    # Criação do embed estruturado em caixa de painel profissional
+                    embed = discord.Embed(
+                        title="⚡ WhatExpsAre.Online | Exploit Status",
+                        color=discord.Color.from_str("#ff0000")
+                    )
                     
                     if windows_exploits:
-                        descricao_final += "🖥️ **WINDOWS EXPLOITS**\n" + "────────────────────────\n" + "\n".join(windows_exploits) + "\n\n"
+                        embed.add_field(name="🖥️ Windows Exploits", value="\n".join(windows_exploits), inline=False)
                     if mac_exploits:
-                        descricao_final += "💻 **MAC EXPLOITS**\n" + "────────────────────────\n" + "\n".join(mac_exploits) + "\n\n"
+                        embed.add_field(name="💻 Mac Exploits", value="\n".join(mac_exploits), inline=False)
                     if windows_externals:
-                        descricao_final += "🔌 **WINDOWS EXTERNALS**\n" + "────────────────────────\n" + "\n".join(windows_externals) + "\n\n"
+                        embed.add_field(name="🔌 Windows Externals", value="\n".join(windows_externals), inline=False)
                         
-                    descricao_final = descricao_final.strip()
+                    embed.set_footer(text="Powered by weao.xyz • Atualizado automaticamente")
                     
-                    if id_ultima_mensagem and descricao_final == ultimo_conteudo_enviado:
+                    # Identificador para verificar mudanças
+                    conteudo_comparacao = str(windows_exploits) + str(mac_exploits) + str(windows_externals)
+                    if id_ultima_mensagem and conteudo_comparacao == ultimo_conteudo_enviado:
                         print("Sem alterações nos status. Nenhuma edição necessária.")
                         return
                     
-                    ultimo_conteudo_enviado = descricao_final
-                    
-                    # Usamos um Embed limpo mas estruturado com divisores visuais simulados
-                    embed = discord.Embed(
-                        title="⚡ WhatExpsAre.Online | Status Report",
-                        description=descricao_final,
-                        color=discord.Color.from_str("#ff0000")
-                    )
-                    embed.set_footer(text="Powered by weao.xyz • Atualizado automaticamente")
+                    ultimo_conteudo_enviado = conteudo_comparacao
                     
                 else:
                     embed = discord.Embed(
