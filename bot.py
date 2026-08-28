@@ -1,14 +1,32 @@
 import discord
 from discord.ext import tasks, commands
 import aiohttp
+from aiohttp import web
 import os
+import asyncio
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 id_ultima_mensagem = None
-ultimo_conteudo_enviado = None  # Guarda o texto da última descrição para comparar
+ultimo_conteudo_enviado = None
 CANAL_ID = 1542669778999574599  # Substitui pelo ID real do teu canal
+
+# Mini servidor HTTP para o Render detetar uma porta aberta
+async def handle_ping(request):
+    return web.Response(text="Bot is running!")
+
+async def start_web_server():
+    app = web.Application()
+    app.router.add_get("/", handle_ping)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    # O Render define automaticamente a porta na variável PORT (ou usa a 8080 por defeito)
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    print(f"Servidor web a correr na porta {port}")
 
 @bot.event
 async def on_ready():
@@ -68,12 +86,10 @@ async def enviar_ou_atualizar():
                         
                     descricao_final = descricao_final.strip()
                     
-                    # Se o conteúdo for exatamente igual ao anterior e a mensagem já existir, não faz nada!
                     if id_ultima_mensagem and descricao_final == ultimo_conteudo_enviado:
                         print("Sem alterações nos exploits. Nenhuma edição necessária.")
                         return
                     
-                    # Atualiza o registo do último conteúdo
                     ultimo_conteudo_enviado = descricao_final
                     
                     embed = discord.Embed(
@@ -96,7 +112,6 @@ async def enviar_ou_atualizar():
             color=discord.Color.red()
         )
 
-    # Envia ou edita a mensagem apenas se houve mudanças ou se for a primeira vez
     mensagem_editada = False
     if id_ultima_mensagem:
         try:
@@ -114,4 +129,10 @@ async def enviar_ou_atualizar():
 async def antes_de_comecar():
     await bot.wait_until_ready()
 
-bot.run(os.environ.get('DISCORD_TOKEN'))
+async def main():
+    # Inicia o servidor web em paralelo com o bot do Discord
+    await start_web_server()
+    await bot.start(os.environ.get('DISCORD_TOKEN'))
+
+if __name__ == "__main__":
+    asyncio.run(main())
