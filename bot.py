@@ -9,29 +9,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 id_ultima_mensagem = None
 ultimo_conteudo_enviado = None
-CANAL_ID = 1542669778999574599
-
-def criar_campos_seguros(nome_campo, lista_itens, embed):
-    """Divide a lista em vários campos caso ultrapasse o limite de 1024 carateres do Discord."""
-    if not lista_itens:
-        return
-    
-    bloco_atual = ""
-    indice = 1
-    
-    for item in lista_itens:
-        # Se adicionar o próximo item passar dos 1000 carateres, criamos um novo campo para evitar erros
-        if len(bloco_atual) + len(item) + 1 > 1000:
-            nome_f = f"{nome_campo} (Parte {indice})" if indice > 1 else nome_campo
-            embed.add_field(name=nome_f, value=bloco_atual, inline=False)
-            bloco_atual = item + "\n"
-            indice += 1
-        else:
-            bloco_atual += item + "\n"
-            
-    if bloco_atual:
-        nome_f = f"{nome_campo} (Parte {indice})" if indice > 1 else nome_campo
-        embed.add_field(name=nome_f, value=bloco_atual, inline=False)
+CANAL_ID = 1542669778999574599  # ID do teu canal
 
 @bot.event
 async def on_ready():
@@ -85,18 +63,11 @@ async def enviar_ou_atualizar():
                     if isinstance(dados, list):
                         for exp in dados:
                             nome = exp.get("title", "Desconhecido")
-                            versao = exp.get("version", "N/A")
+                            versao = exp.get("version", "")
                             atualizado = exp.get("updateStatus", False)
                             
-                            status_str = "Online / Atualizado" if atualizado else "Desatualizado"
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
-                            
-                            bloco_item = (
-                                f"### {nome}\n"
-                                f"**Version**\n`{versao}`\n"
-                                f"**Status**\n{status_emoji} {status_str}\n"
-                                f"────────────────────────"
-                            )
+                            linha = f"• **{nome}** — `{versao}` {status_emoji}"
                             
                             nome_lower = nome.lower()
                             plataforma = str(exp.get("platform", "")).lower()
@@ -104,22 +75,25 @@ async def enviar_ou_atualizar():
                             is_external = exp.get("isExternal", False) or exp.get("external", False)
                             
                             if "mac" in plataforma or "mac" in tipo or "mac" in nome_lower:
-                                mac_exploits.append(bloco_item)
+                                mac_exploits.append(linha)
                             elif is_external or any(ext in nome_lower for ext in nomes_externals_conhecidos) or "external" in tipo:
-                                windows_externals.append(bloco_item)
+                                windows_externals.append(linha)
                             else:
-                                windows_exploits.append(bloco_item)
+                                windows_exploits.append(linha)
                     
+                    # Constrói o Embed principal com o aspeto de painel em caixa, sem botões
                     embed = discord.Embed(
-                        title="A Roblox update has been detected!",
-                        description="**@Att pc**\nRoblox has just updated! This version is now being used by players.",
+                        title="⚡ Exploit Status Tracker",
+                        description="A atualização dos executores foi detetada!",
                         color=discord.Color.from_str("#2b2d31")
                     )
                     
-                    # Adiciona os campos de forma segura dividindo caso excedam 1024 carateres
-                    criar_campos_seguros("🖥️ Windows Exploits", windows_exploits, embed)
-                    criar_campos_seguros("💻 Mac Exploits", mac_exploits, embed)
-                    criar_campos_seguros("🔌 Windows Externals", windows_externals, embed)
+                    if windows_exploits:
+                        embed.add_field(name="🖥️ Windows Exploits", value="\n".join(windows_exploits), inline=False)
+                    if mac_exploits:
+                        embed.add_field(name="💻 Mac Exploits", value="\n".join(mac_exploits), inline=False)
+                    if windows_externals:
+                        embed.add_field(name="🔌 Windows Externals", value="\n".join(windows_externals), inline=False)
                         
                     embed.set_footer(text="Powered by weao.xyz")
                     
