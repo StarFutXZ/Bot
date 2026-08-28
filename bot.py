@@ -1,7 +1,6 @@
 import discord
 from discord.ext import tasks, commands
 import aiohttp
-import aiohttp.web as web
 import os
 import asyncio
 
@@ -11,19 +10,6 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 id_ultima_mensagem = None
 ultimo_conteudo_enviado = None
 CANAL_ID = 1542669778999574599  # ID do teu canal
-
-async def handle_ping(request):
-    return web.Response(text="Bot is running!")
-
-async def start_web_server():
-    app = web.Application()
-    app.router.add_get("/", handle_ping)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    port = int(os.environ.get("PORT", 8080))
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-    print(f"Servidor HTTP a escutar na porta {port}")
 
 @bot.event
 async def on_ready():
@@ -40,8 +26,10 @@ async def on_ready():
     except Exception as e:
         print(f"Erro ao procurar mensagem anterior: {e}")
 
+    # Inicia o loop se já não estiver a correr
     if not enviar_ou_atualizar.is_running():
         enviar_ou_atualizar.start()
+        print("Loop de 15 minutos iniciado com sucesso!")
 
 @tasks.loop(minutes=15)
 async def enviar_ou_atualizar():
@@ -68,7 +56,6 @@ async def enviar_ou_atualizar():
                     mac_exploits = []
                     windows_externals = []
                     
-                    # Lista fixa de nomes conhecidos de Windows Externals para garantir que caem sempre no sítio certo
                     nomes_externals_conhecidos = [
                         "serotonin", "matcha", "severe", "lumen", "matrix hub", 
                         "melatonin", "axis", "photon", "ronin", "dx9ware v2", "dx9ware"
@@ -88,7 +75,6 @@ async def enviar_ou_atualizar():
                             tipo = str(exp.get("type", "")).lower()
                             is_external = exp.get("isExternal", False) or exp.get("external", False)
                             
-                            # Condição blindada de separação
                             if "mac" in plataforma or "mac" in tipo or "mac" in nome_lower:
                                 mac_exploits.append(linha)
                             elif is_external or any(ext in nome_lower for ext in nomes_externals_conhecidos) or "external" in tipo:
@@ -126,11 +112,8 @@ async def enviar_ou_atualizar():
                         color=discord.Color.red()
                     )
     except Exception as e:
-        embed = discord.Embed(
-            title="Erro de Ligação",
-            description=f"⚠️ Erro: {e}",
-            color=discord.Color.red()
-        )
+        print(f"Erro no pedido HTTP: {e}")
+        return
 
     mensagem_editada = False
     if id_ultima_mensagem:
@@ -158,15 +141,8 @@ async def enviar_ou_atualizar():
 async def antes_de_comecar():
     await bot.wait_until_ready()
 
-async def main():
-    asyncio.create_task(start_web_server())
-    
-    token = os.environ.get('DISCORD_TOKEN')
-    if not token:
-        print("ERRO: Variável DISCORD_TOKEN em falta!")
-        return
-        
-    await bot.start(token)
-
-if __name__ == "__main__":
-    asyncio.run(main())
+token = os.environ.get('DISCORD_TOKEN')
+if not token:
+    print("ERRO: Variável DISCORD_TOKEN em falta!")
+else:
+    bot.run(token)
