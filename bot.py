@@ -9,7 +9,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 id_ultima_mensagem = None
 ultimo_conteudo_enviado = None
-CANAL_ID = 1542669778999574599  # ID do teu canal
+CANAL_ID = 1542669778999574599
 
 @bot.event
 async def on_ready():
@@ -63,11 +63,19 @@ async def enviar_ou_atualizar():
                     if isinstance(dados, list):
                         for exp in dados:
                             nome = exp.get("title", "Desconhecido")
-                            versao = exp.get("version", "")
+                            versao = exp.get("version", "N/A")
                             atualizado = exp.get("updateStatus", False)
                             
+                            status_str = "Online / Atualizado" if atualizado else "Desatualizado"
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
-                            linha = f"• **{nome}** — `{versao}` {status_emoji}"
+                            
+                            # Estrutura idêntica à imagem de referência (blocos verticais com campos e linhas)
+                            bloco_item = (
+                                f"### {nome}\n"
+                                f"**Version**\n`{versao}`\n"
+                                f"**Status**\n{status_emoji} {status_str}\n"
+                                f"────────────────────────"
+                            )
                             
                             nome_lower = nome.lower()
                             plataforma = str(exp.get("platform", "")).lower()
@@ -75,16 +83,16 @@ async def enviar_ou_atualizar():
                             is_external = exp.get("isExternal", False) or exp.get("external", False)
                             
                             if "mac" in plataforma or "mac" in tipo or "mac" in nome_lower:
-                                mac_exploits.append(linha)
+                                mac_exploits.append(bloco_item)
                             elif is_external or any(ext in nome_lower for ext in nomes_externals_conhecidos) or "external" in tipo:
-                                windows_externals.append(linha)
+                                windows_externals.append(bloco_item)
                             else:
-                                windows_exploits.append(linha)
+                                windows_exploits.append(bloco_item)
                     
-                    # Constrói o Embed principal com o aspeto de painel em caixa, sem botões
+                    # Mensagem principal com o visual de painel unificado em tom escuro
                     embed = discord.Embed(
-                        title="⚡ Exploit Status Tracker",
-                        description="A atualização dos executores foi detetada!",
+                        title="A Roblox update has been detected!",
+                        description="**@Att pc**\nRoblox has just updated! This version is now being used by players.",
                         color=discord.Color.from_str("#2b2d31")
                     )
                     
