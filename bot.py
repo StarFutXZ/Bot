@@ -27,12 +27,14 @@ async def on_ready():
     except Exception as e:
         print(f"Erro ao procurar mensagem anterior: {e}")
 
+    # Força a execução imediata assim que liga
+    bot.loop.create_task(enviar_ou_atualizar_logic())
+
     if not enviar_ou_atualizar.is_running():
         enviar_ou_atualizar.start()
         print("Loop de 15 minutos iniciado com sucesso!")
 
-@tasks.loop(minutes=15)
-async def enviar_ou_atualizar():
+async def enviar_ou_atualizar_logic():
     global id_ultima_mensagem, ultimo_conteudo_enviado
     
     print("A verificar atualizações da API WEAO...")
@@ -93,10 +95,8 @@ async def enviar_ou_atualizar():
                     descricao_final = "\n\n──────────────────────────────\n\n".join(blocos)
                     descricao_final = descricao_final.strip()
                     
-                    if id_ultima_mensagem and descricao_final == ultimo_conteudo_enviado:
-                        print("Sem alterações nos status. Nenhuma edição necessária.")
-                        return
-                    
+                    # ATENÇÃO: Removi a restrição de bloquear se o conteúdo for igual, 
+                    # para forçar a edição/envio caso a mensagem anterior se tenha perdido.
                     ultimo_conteudo_enviado = descricao_final
                     
                     embed = discord.Embed(
@@ -138,6 +138,10 @@ async def enviar_ou_atualizar():
         id_ultima_mensagem = nova_msg.id
         print("Nova mensagem enviada.")
 
+@tasks.loop(minutes=15)
+async def enviar_ou_atualizar():
+    await enviar_ou_atualizar_logic()
+
 @enviar_ou_atualizar.before_loop
 async def antes_de_comecar():
     await bot.wait_until_ready()
@@ -152,7 +156,6 @@ async def start_web_server():
     runner = web.AppRunner(app)
     await runner.setup()
     
-    # O Render atribui dinamicamente uma porta através da variável PORT
     port = int(os.environ.get("PORT", 8080))
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
@@ -164,7 +167,6 @@ async def main():
         print("ERRO: Variável DISCORD_TOKEN em falta!")
         return
 
-    # Inicia o servidor web em paralelo com o bot do Discord
     await start_web_server()
     await bot.start(token)
 
