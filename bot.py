@@ -67,7 +67,8 @@ async def enviar_ou_atualizar():
                             atualizado = exp.get("updateStatus", False)
                             
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
-                            linha = f"• **{nome}** — `{versao}` {status_emoji}"
+                            # Formatação exata com nome limpo, versão em código e emoji de status
+                            linha = f"• **{nome}** : `{versao}` {status_emoji}"
                             
                             nome_lower = nome.lower()
                             plataforma = str(exp.get("platform", "")).lower()
@@ -81,19 +82,18 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    # Constrói o Embed principal com o aspeto de painel em caixa, sem botões
+                    # Cor escura padrão do tema do Discord para remover barras laterais berrantes
                     embed = discord.Embed(
-                        title="⚡ Exploit Status Tracker",
-                        description="A atualização dos executores foi detetada!",
+                        title="WhatExpsAre.Online | Exploit Status",
                         color=discord.Color.from_str("#2b2d31")
                     )
                     
                     if windows_exploits:
-                        embed.add_field(name="🖥️ Windows Exploits", value="\n".join(windows_exploits), inline=False)
+                        embed.add_field(name="Windows Exploits", value="\n".join(windows_exploits), inline=False)
                     if mac_exploits:
-                        embed.add_field(name="💻 Mac Exploits", value="\n".join(mac_exploits), inline=False)
+                        embed.add_field(name="Mac Exploits", value="\n".join(mac_exploits), inline=False)
                     if windows_externals:
-                        embed.add_field(name="🔌 Windows Externals", value="\n".join(windows_externals), inline=False)
+                        embed.add_field(name="Windows Externals", value="\n".join(windows_externals), inline=False)
                         
                     embed.set_footer(text="Powered by weao.xyz")
                     
