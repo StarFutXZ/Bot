@@ -12,7 +12,6 @@ id_ultima_mensagem = None
 ultimo_conteudo_enviado = None
 CANAL_ID = 1542669778999574599  # Substitui pelo ID real do teu canal
 
-# Mini servidor HTTP para o Render detetar uma porta aberta
 async def handle_ping(request):
     return web.Response(text="Bot is running!")
 
@@ -21,8 +20,6 @@ async def start_web_server():
     app.router.add_get("/", handle_ping)
     runner = web.AppRunner(app)
     await runner.setup()
-    
-    # O Render define automaticamente a porta na variável PORT (ou usa a 8080 por defeito)
     port = int(os.environ.get("PORT", 8080))
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
@@ -30,7 +27,20 @@ async def start_web_server():
 
 @bot.event
 async def on_ready():
+    global id_ultima_mensagem
     print(f"Bot ligado com sucesso como {bot.user}")
+    
+    # Tenta encontrar uma mensagem anterior do próprio bot no canal para evitar duplicados
+    try:
+        canal = await bot.fetch_channel(CANAL_ID)
+        async for mensagem in canal.history(limit=20):
+            if mensagem.author.id == bot.user.id and mensagem.embeds:
+                id_ultima_mensagem = mensagem.id
+                print(f"Mensagem anterior detetada (ID: {id_ultima_mensagem}). O bot vai apenas editá-la.")
+                break
+    except Exception as e:
+        print(f"Erro ao procurar mensagem anterior: {e}")
+
     if not enviar_ou_atualizar.is_running():
         enviar_ou_atualizar.start()
 
@@ -63,7 +73,8 @@ async def enviar_ou_atualizar():
                             versao = exp.get("version", "")
                             atualizado = exp.get("updateStatus", False)
                             
-                            status_emoji = "🟩" if atualizado else "🟥"
+                            # Emojis corrigidos para ✅ e ❌ (ou podes alterar se preferires)
+                            status_emoji = "✅" if atualizado else "❌"
                             linha = f"{nome} | `{versao}` | {status_emoji}"
                             
                             tipo = str(exp.get("type", "")).lower()
@@ -112,6 +123,7 @@ async def enviar_ou_atualizar():
             color=discord.Color.red()
         )
 
+    # Tenta editar a mensagem existente
     mensagem_editada = False
     if id_ultima_mensagem:
         try:
@@ -121,7 +133,15 @@ async def enviar_ou_atualizar():
         except (discord.NotFound, discord.HTTPException):
             mensagem_editada = False
 
+    # Se não conseguiu editar, limpa mensagens antigas do bot no canal e envia uma nova
     if not mensagem_editada:
+        try:
+            async for mensagem in canal.history(limit=10):
+                if mensagem.author.id == bot.user.id:
+                    await mensagem.delete()
+        except Exception:
+            pass
+            
         nova_msg = await canal.send(embed=embed)
         id_ultima_mensagem = nova_msg.id
 
@@ -130,7 +150,6 @@ async def antes_de_comecar():
     await bot.wait_until_ready()
 
 async def main():
-    # Inicia o servidor web em paralelo com o bot do Discord
     await start_web_server()
     await bot.start(os.environ.get('DISCORD_TOKEN'))
 
