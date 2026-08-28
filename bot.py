@@ -96,4 +96,81 @@ async def enviar_ou_atualizar():
                         bloco_mac = "**Mac Exploits**\n```\n" + "\n".join(mac_exploits) + "\n```"
                         seccoes.append(bloco_mac)
                     if windows_externals:
-                        bloco_ext = "**Windows Externals**\n```\n" + "\n".join(windows_externals) + "\n
+                        bloco_ext = "**Windows Externals**\n```\n" + "\n".join(windows_externals) + "\n```"
+                        seccoes.append(bloco_ext)
+                        
+                    conteudo_total = "\n\n".join(seccoes)
+                    
+                    if ids_ultimas_mensagens and conteudo_total == ultimo_conteudo_enviado:
+                        print("Sem alterações nos status. Nenhuma edição necessária.")
+                        return
+                    
+                    ultimo_conteudo_enviado = conteudo_total
+                    
+                    # Lógica inteligente para dividir em múltiplos embeds caso passe dos 3900 carateres (margem de segurança)
+                    embeds_para_enviar = []
+                    bloco_atual = ""
+                    
+                    for seccao in seccoes:
+                        if len(bloco_atual) + len(seccao) + 2 > 3900:
+                            # Cria o embed com o bloco atual e começa um novo
+                            emb = discord.Embed(
+                                title="WhatExpsAre.Online | Exploit Status (Continuação)",
+                                description=bloco_atual.strip(),
+                                color=discord.Color.from_rgb(40, 40, 45)
+                            )
+                            embeds_para_enviar.append(emb)
+                            bloco_atual = seccao + "\n\n"
+                        else:
+                            bloco_atual += seccao + "\n\n"
+                            
+                    # Adiciona o último bloco restante
+                    if bloco_atual:
+                        titulo = "WhatExpsAre.Online | Exploit Status" if len(embeds_para_enviar) == 0 else "WhatExpsAre.Online | Exploit Status (Continuação)"
+                        emb = discord.Embed(
+                            title=titulo,
+                            description=bloco_atual.strip(),
+                            color=discord.Color.from_rgb(40, 40, 45)
+                        )
+                        # Coloca o rodapé apenas no último embed
+                        emb.set_footer(text="Powered by weao.xyz")
+                        embeds_para_enviar.append(emb)
+                        
+                else:
+                    embeds_para_enviar = [discord.Embed(
+                        title="Erro",
+                        description="⚠️ Erro ao aceder à API de status da WEAO.",
+                        color=discord.Color.red()
+                    )]
+    except Exception as e:
+        print(f"Erro no pedido HTTP: {e}")
+        return
+
+    # Apaga as mensagens antigas do bot para evitar acumulação de lixo no canal
+    if ids_ultimas_mensagens:
+        for msg_id in ids_ultimas_mensagens:
+            try:
+                msg_antiga = await canal.fetch_message(msg_id)
+                await msg_antiga.delete()
+            except Exception:
+                pass
+        ids_ultimas_mensagens = []
+
+    # Envia os novos embeds (pode ser 1 ou mais se exceder o limite)
+    try:
+        # O discord permite enviar até 10 embeds numa única mensagem
+        nova_msg = await canal.send(embeds=embeds_para_enviar)
+        ids_ultimas_mensagens = [nova_msg.id]
+        print("Status atualizados com sucesso (múltiplos embeds tratados em mensagem única).")
+    except Exception as e:
+        print(f"Erro ao enviar a mensagem com os embeds: {e}")
+
+@enviar_ou_atualizar.before_loop
+async def antes_de_comecar():
+    await bot.wait_until_ready()
+
+token = os.environ.get('DISCORD_TOKEN')
+if not token:
+    print("ERRO: Variável DISCORD_TOKEN em falta!")
+else:
+    bot.run(token)
