@@ -4,6 +4,8 @@ import aiohttp
 import os
 import asyncio
 from aiohttp import web
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -27,8 +29,6 @@ async def on_ready():
     except Exception as e:
         print(f"Erro ao procurar mensagem anterior: {e}")
 
-    # Removemos daqui a execução duplicada para evitar conflitos. 
-    # O próprio loop trata de arrancar assim que o bot estiver pronto.
     if not enviar_ou_atualizar.is_running():
         enviar_ou_atualizar.start()
         print("Loop de 15 minutos iniciado com sucesso!")
@@ -81,7 +81,6 @@ async def enviar_ou_atualizar_logic():
                             elif is_external or any(ext in nome_lower for ext in nomes_externals_conhecidos) or "external" in tipo:
                                 windows_externals.append(linha)
                             else:
-                            # Adiciona um mecanismo de auto-ping opcional se quiseres evitar que o Render adormeça
                                 windows_exploits.append(linha)
                     
                     blocos = []
@@ -102,8 +101,10 @@ async def enviar_ou_atualizar_logic():
                         description=descricao_final,
                         color=discord.Color.from_rgb(40, 40, 45)
                     )
-                    hora_atual = discord.utils.utcnow().strftime('%H:%M')
-                    embed.set_footer(text=f"Powered by weao.xyz • Atualizado às {hora_atual}")
+                    
+                    # Obtém a hora exata para o fuso horário de Portugal (Europe/Lisbon)
+                    hora_portugal = datetime.now(ZoneInfo("Europe/Lisbon")).strftime('%H:%M')
+                    embed.set_footer(text=f"Powered by weao.xyz • Atualizado às {hora_portugal}")
                     
                 else:
                     embed = discord.Embed(
@@ -144,8 +145,6 @@ async def enviar_ou_atualizar():
 @enviar_ou_atualizar.before_loop
 async def antes_de_comecar():
     await bot.wait_until_ready()
-    # Ao colocar a função aqui, o loop executa logo a primeira vez assim que liga, 
-    # e depois repete religiosamente a cada 15 minutos sem falhas.
     await enviar_ou_atualizar_logic()
 
 # --- Servidor HTTP para satisfazer o Web Service do Render ---
