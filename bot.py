@@ -67,8 +67,7 @@ async def enviar_ou_atualizar():
                             atualizado = exp.get("updateStatus", False)
                             
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
-                            # Formatação exata com nome limpo, versão em código e emoji de status
-                            linha = f"• **{nome}** : `{versao}` {status_emoji}"
+                            linha = f"• **{nome}** — `{versao}` {status_emoji}"
                             
                             nome_lower = nome.lower()
                             plataforma = str(exp.get("platform", "")).lower()
@@ -82,18 +81,19 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    # Cor escura padrão do tema do Discord para remover barras laterais berrantes
+                    # Constrói o Embed principal com o aspeto de painel em caixa, sem botões
                     embed = discord.Embed(
-                        title="WhatExpsAre.Online | Exploit Status",
+                        title="⚡ Exploit Status Tracker",
+                        description="A atualização dos executores foi detetada!",
                         color=discord.Color.from_str("#2b2d31")
                     )
                     
                     if windows_exploits:
-                        embed.add_field(name="Windows Exploits", value="\n".join(windows_exploits), inline=False)
+                        embed.add_field(name="🖥️ Windows Exploits", value="\n".join(windows_exploits), inline=False)
                     if mac_exploits:
-                        embed.add_field(name="Mac Exploits", value="\n".join(mac_exploits), inline=False)
+                        embed.add_field(name="💻 Mac Exploits", value="\n".join(mac_exploits), inline=False)
                     if windows_externals:
-                        embed.add_field(name="Windows Externals", value="\n".join(windows_externals), inline=False)
+                        embed.add_field(name="🔌 Windows Externals", value="\n".join(windows_externals), inline=False)
                         
                     embed.set_footer(text="Powered by weao.xyz")
                     
@@ -145,3 +145,4 @@ if not token:
     print("ERRO: Variável DISCORD_TOKEN em falta!")
 else:
     bot.run(token)
+
