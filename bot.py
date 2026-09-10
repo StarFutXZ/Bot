@@ -1,4 +1,4 @@
-import discord
+Import discord
 from discord.ext import tasks, commands
 import aiohttp
 import os
@@ -70,9 +70,7 @@ async def enviar_ou_atualizar():
                             atualizado = exp.get("updateStatus", False)
                             
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
-                            
-                            # Visual alterado para o estilo da imagem (Nome • `versão`  Status)
-                            linha = f"{nome} • `{versao}`  {status_emoji}"
+                            linha = f"{nome} | `{versao}` | {status_emoji}"
                             
                             nome_lower = nome.lower()
                             plataforma = str(exp.get("platform", "")).lower()
