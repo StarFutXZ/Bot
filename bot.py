@@ -96,7 +96,7 @@ async def enviar_ou_atualizar():
                     corpo_texto = "\n".join(textos_corpo).strip()
                     
                     hora_portugal = datetime.now(ZoneInfo("Europe/Lisbon")).strftime('%H:%M')
-                    footer_texto = f"Powered by weao.xyz • Atualizado às {hora_portugal}"
+                    footer_texto = f"Provided by weao.xyz • Atualizado às {hora_portugal}"
                     
                     conteudo_corpo_total = f"{corpo_texto}\n\n-# {footer_texto}"
                     ultimo_conteudo_enviado = conteudo_corpo_total
