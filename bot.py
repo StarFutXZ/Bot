@@ -94,12 +94,11 @@ async def enviar_ou_atualizar():
                         
                     corpo_texto = "\n".join(textos_corpo).strip()
                     
-                    hora_portugal = datetime.now(ZoneInfo("Europe/Lisbon")).strftime('%H:%M')
-                    footer_texto = f"Provided by weao.xyz • Atualizado às {hora_portugal}"
+                    footer_texto = "Auto-updated. Last check: há alguns segundos"
                     
                     ultimo_conteudo_enviado = corpo_texto
 
-                    # Payload corrigido com a estrutura correta de itens para o Media Gallery (type 12)
+                    # Payload atualizado com o rodapé idêntico ao da imagem de referência
                     payload = {
                         "flags": 32768,
                         "components": [
@@ -107,7 +106,7 @@ async def enviar_ou_atualizar():
                                 "type": 17,  # Container
                                 "components": [
                                     {
-                                        "type": 12,  # Media Gallery
+                                        "type": 12,  # Media Gallery com a imagem
                                         "items": [
                                             {
                                                 "media": {
@@ -126,7 +125,7 @@ async def enviar_ou_atualizar():
                                         "content": corpo_texto
                                     },
                                     {
-                                        "type": 14,  # Divisor antes da última linha/rodapé
+                                        "type": 14,  # Divisor antes do rodapé
                                         "divider": True,
                                         "spacing": 1
                                     },
@@ -174,7 +173,7 @@ async def enviar_ou_atualizar():
                 edit_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages/{id_ultima_mensagem}"
                 async with session.patch(edit_url, json=payload, headers=headers_discord) as resp:
                     if resp.status == 200:
-                        print("Mensagem atualizada com sucesso.")
+                        print("Mensagem atualizada com o rodapé novo com sucesso.")
                         return
 
             send_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages"
