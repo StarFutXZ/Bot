@@ -111,7 +111,7 @@ async def enviar_ou_atualizar():
                                         "items": [
                                             {
                                                 "media": {
-                                                    "url": "https://cdn.discordapp.com/attachments/1379466761354874954/1547849387290656828/real-status.png"
+                                                    "url": "https://cdn.discordapp.com/attachments/1379466761354874954/1548083695447969852/image_4.png?ex=6aa5c4ca&is=6aa4734a&hm=50de9e3ea4e6d402fcbb50370793f5c2c65c32bb58dd27075e56176154cca120&"
                                                 }
                                             }
                                         ]
