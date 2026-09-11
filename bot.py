@@ -84,7 +84,6 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    # Construção dos blocos de texto internos do container
                     textos_container = []
                     textos_container.append("### WhatExpsAre.Online | Exploit Status\n")
                     
@@ -103,16 +102,16 @@ async def enviar_ou_atualizar():
                     conteudo_total = f"{corpo_texto}\n\n-# {footer_texto}"
                     ultimo_conteudo_enviado = conteudo_total
 
-                    # Payload estruturado com Components V2 (Container com accent_color)
+                    # Payload utilizando componentes V2 para eliminar o embed tradicional e aplicar o container com barra lateral
                     payload = {
-                        "flags": 32768,  # IS_COMPONENTS_V2
+                        "flags": 32768,  # Ativa o modo de componentes V2
                         "components": [
                             {
-                                "type": 17,  # Container Component
-                                "accent_color": 2829609,  # Cor da barra lateral em formato decimal (equivalente a uma cor escura/cinzenta elegante)
+                                "type": 17,  # Componente do tipo Container
+                                "accent_color": 2829609,  # Cor da barra lateral do container
                                 "components": [
                                     {
-                                        "type": 10,  # TextDisplay Component
+                                        "type": 10,  # Componente do tipo TextDisplay para o conteúdo interno
                                         "content": conteudo_total
                                     }
                                 ]
@@ -137,7 +136,7 @@ async def enviar_ou_atualizar():
                         ]
                     }
 
-        # Envio utilizando pedidos HTTP diretos à API do Discord (v10)
+        # Envio e edição via API REST v10 do Discord
         async with aiohttp.ClientSession() as session:
             headers_discord = {
                 "Authorization": f"Bot {os.environ.get('DISCORD_TOKEN')}",
