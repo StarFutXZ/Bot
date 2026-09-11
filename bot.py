@@ -84,44 +84,67 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    # Corpo apenas com os status (o título fica num componente separado para poder levar a linha logo abaixo)
-                    textos_corpo = []
-                    if windows_exploits:
-                        textos_corpo.append("**Windows Exploits**\n" + "\n".join(windows_exploits))
-                    if mac_exploits:
-                        textos_corpo.append("\n**Mac Exploits**\n" + "\n".join(mac_exploits))
-                    if windows_externals:
-                        textos_corpo.append("\n**Windows Externals**\n" + "\n".join(windows_externals))
-                        
-                    corpo_texto = "\n".join(textos_corpo).strip()
+                    # Usando o componente type 14 (divisores) diretamente dentro do container para separar as seções com linhas limpas
+                    container_components = [
+                        {
+                            "type": 10,
+                            "content": "### WhatExpsAre.Online | Exploit Status"
+                        },
+                        {
+                            "type": 14,
+                            "divider": True,
+                            "spacing": 1
+                        }
+                    ]
                     
+                    if windows_exploits:
+                        container_components.append({
+                            "type": 10,
+                            "content": "**Windows Exploits**\n" + "\n".join(windows_exploits)
+                        })
+                        
+                    if mac_exploits:
+                        container_components.append({
+                            "type": 14,
+                            "divider": True,
+                            "spacing": 1
+                        })
+                        container_components.append({
+                            "type": 10,
+                            "content": "**Mac Exploits**\n" + "\n".join(mac_exploits)
+                        })
+                        
+                    if windows_externals:
+                        container_components.append({
+                            "type": 14,
+                            "divider": True,
+                            "spacing": 1
+                        })
+                        container_components.append({
+                            "type": 10,
+                            "content": "**Windows Externals**\n" + "\n".join(windows_externals)
+                        })
+                        
                     hora_portugal = datetime.now(ZoneInfo("Europe/Lisbon")).strftime('%H:%M')
                     footer_texto = f"⏳ Stock Change in • Atualizado às {hora_portugal}"
                     
-                    conteudo_corpo_total = f"{corpo_texto}\n\n-# {footer_texto}"
-                    ultimo_conteudo_enviado = conteudo_corpo_total
+                    container_components.append({
+                        "type": 14,
+                        "divider": True,
+                        "spacing": 1
+                    })
+                    container_components.append({
+                        "type": 10,
+                        "content": f"-# {footer_texto}"
+                    })
 
-                    # Payload com Container dividindo o título, a linha divisória (type 14) e o corpo
+                    # Payload com o Container estruturado contendo múltiplos divisores (type 14)
                     payload = {
                         "flags": 32768,
                         "components": [
                             {
                                 "type": 17,  # Container
-                                "components": [
-                                    {
-                                        "type": 10,
-                                        "content": "### WhatExpsAre.Online | Exploit Status"
-                                    },
-                                    {
-                                        "type": 14,  # Separator / Divider component
-                                        "divider": True,
-                                        "spacing": 1
-                                    },
-                                    {
-                                        "type": 10,
-                                        "content": conteudo_corpo_total
-                                    }
-                                ]
+                                "components": container_components
                             }
                         ]
                     }
@@ -161,7 +184,7 @@ async def enviar_ou_atualizar():
                 edit_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages/{id_ultima_mensagem}"
                 async with session.patch(edit_url, json=payload, headers=headers_discord) as resp:
                     if resp.status == 200:
-                        print("Mensagem com linha divisória editada com sucesso.")
+                        print("Mensagem atualizada com múltiplas linhas divisórias com sucesso.")
                         return
 
             send_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages"
@@ -169,9 +192,9 @@ async def enviar_ou_atualizar():
                 if resp.status == 200:
                     data_resp = await resp.json()
                     id_ultima_mensagem = data_resp.get("id")
-                    print("Nova mensagem com linha divisória enviada com sucesso.")
+                    print("Nova mensagem com múltiplas linhas divisórias enviada com sucesso.")
                 else:
-                    print(f"Erro ao enviar container com linha: {await resp.text()}")
+                    print(f"Erro ao enviar container: {await resp.text()}")
             
     except Exception as e:
         print(f"Erro crítico apanhado no loop principal: {e}")
