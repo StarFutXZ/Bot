@@ -84,7 +84,7 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    # Corpo apenas com os status (o título fica num componente separado para poder levar a linha logo abaixo)
+                    # Montar o corpo completo do texto agrupando as seções normalmente sem linhas internas
                     textos_corpo = []
                     if windows_exploits:
                         textos_corpo.append("**Windows Exploits**\n" + "\n".join(windows_exploits))
@@ -98,10 +98,9 @@ async def enviar_ou_atualizar():
                     hora_portugal = datetime.now(ZoneInfo("Europe/Lisbon")).strftime('%H:%M')
                     footer_texto = f"Provided by weao.xyz • Atualizado às {hora_portugal}"
                     
-                    conteudo_corpo_total = f"{corpo_texto}\n\n-# {footer_texto}"
-                    ultimo_conteudo_enviado = conteudo_corpo_total
+                    ultimo_conteudo_enviado = corpo_texto
 
-                    # Payload com Container dividindo o título, a linha divisória (type 14) e o corpo
+                    # Payload com Container contendo apenas uma linha divisória logo antes do rodapé
                     payload = {
                         "flags": 32768,
                         "components": [
@@ -110,16 +109,16 @@ async def enviar_ou_atualizar():
                                 "components": [
                                     {
                                         "type": 10,
-                                        "content": "### WhatExpsAre.Online | Exploit Status"
+                                        "content": "### WhatExpsAre.Online | Exploit Status\n\n" + corpo_texto
                                     },
                                     {
-                                        "type": 14,  # Separator / Divider component
+                                        "type": 14,  # Separator / Divider apenas no fim
                                         "divider": True,
                                         "spacing": 1
                                     },
                                     {
                                         "type": 10,
-                                        "content": conteudo_corpo_total
+                                        "content": f"-# {footer_texto}"
                                     }
                                 ]
                             }
@@ -161,7 +160,7 @@ async def enviar_ou_atualizar():
                 edit_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages/{id_ultima_mensagem}"
                 async with session.patch(edit_url, json=payload, headers=headers_discord) as resp:
                     if resp.status == 200:
-                        print("Mensagem com linha divisória editada com sucesso.")
+                        print("Mensagem atualizada com apenas uma barra no final com sucesso.")
                         return
 
             send_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages"
@@ -169,9 +168,9 @@ async def enviar_ou_atualizar():
                 if resp.status == 200:
                     data_resp = await resp.json()
                     id_ultima_mensagem = data_resp.get("id")
-                    print("Nova mensagem com linha divisória enviada com sucesso.")
+                    print("Nova mensagem enviada com sucesso.")
                 else:
-                    print(f"Erro ao enviar container com linha: {await resp.text()}")
+                    print(f"Erro ao enviar container: {await resp.text()}")
             
     except Exception as e:
         print(f"Erro crítico apanhado no loop principal: {e}")
