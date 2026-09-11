@@ -12,7 +12,26 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 id_ultima_mensagem = None
 ultimo_conteudo_enviado = None
+ultimo_tempo_atualizacao = None
 CANAL_ID = 1542669778999574599  # ID do teu canal
+
+def calcular_tempo_relativo(tempo_passado):
+    if not tempo_passado:
+        return "há alguns segundos"
+    
+    agora = datetime.now(ZoneInfo("Europe/Lisbon"))
+    diferenca = int((agora - tempo_passado).total_seconds())
+    
+    if diferenca < 5:
+        return "há poucos segundos"
+    elif diferenca < 60:
+        return f"há {diferenca} segundos"
+    elif diferenca < 3600:
+        minutos = diferenca // 60
+        return f"há {minutos} minuto" if minutos == 1 else f"há {minutos} minutos"
+    else:
+        horas = diferenca // 3600
+        return f"há {horas} hora" if horas == 1 else f"há {horas} horas"
 
 @bot.event
 async def on_ready():
@@ -35,7 +54,7 @@ async def on_ready():
 
 @tasks.loop(minutes=15)
 async def enviar_ou_atualizar():
-    global id_ultima_mensagem, ultimo_conteudo_enviado
+    global id_ultima_mensagem, ultimo_conteudo_enviado, ultimo_tempo_atualizacao
     
     try:
         print("A verificar atualizações da API WEAO...")
@@ -53,6 +72,7 @@ async def enviar_ou_atualizar():
             async with session.get(url, timeout=30) as response:
                 if response.status == 200:
                     dados = await response.json()
+                    ultimo_tempo_atualizacao = datetime.now(ZoneInfo("Europe/Lisbon"))
                     
                     windows_exploits = []
                     mac_exploits = []
@@ -93,12 +113,11 @@ async def enviar_ou_atualizar():
                         textos_corpo.append("\n**Windows Externals**\n" + "\n".join(windows_externals))
                         
                     corpo_texto = "\n".join(textos_corpo).strip()
-                    
-                    footer_texto = "Auto-updated. Last check: há alguns segundos"
-                    
                     ultimo_conteudo_enviado = corpo_texto
 
-                    # Payload atualizado com o rodapé idêntico ao da imagem de referência
+                    tempo_relativo = calcular_tempo_relativo(ultimo_tempo_atualizacao)
+                    footer_texto = f"Provided by weao.xyz • Atualizado há {tempo_relativo}"
+
                     payload = {
                         "flags": 32768,
                         "components": [
@@ -173,7 +192,7 @@ async def enviar_ou_atualizar():
                 edit_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages/{id_ultima_mensagem}"
                 async with session.patch(edit_url, json=payload, headers=headers_discord) as resp:
                     if resp.status == 200:
-                        print("Mensagem atualizada com o rodapé novo com sucesso.")
+                        print("Mensagem atualizada com o tempo relativo com sucesso.")
                         return
 
             send_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages"
@@ -207,13 +226,14 @@ async def start_web_server():
     print(f"Servidor web a correr na porta {port}")
 
 async def main():
-    token = os.environ.get('DISCORD_TOKEN')
-    if not token:
+    token = os.environ.get('DISOSRD_TOKEN') # Substituir pelo seu token normal caso necessário
+    if not os.environ.get('DISCORD_TOKEN'):
         print("ERRO: Variável DISCORD_TOKEN em falta!")
         return
 
     await start_web_server()
-    await bot.start(token)
+    token_val = os.environ.get('DISCORD_TOKEN')
+    await bot.start(token_val)
 
 if __name__ == "__main__":
     asyncio.run(main())
