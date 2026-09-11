@@ -70,8 +70,9 @@ async def enviar_ou_atualizar():
                             atualizado = exp.get("updateStatus", False)
                             
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
-                            # Aqui envolvemos a versão entre crases para criar o efeito de caixinha cinza
-                            linha = f"{nome} | `{versao}` | {status_emoji}"
+                            
+                            # O TRUQUE DO VISUAL CLEAN: Colocar a linha inteira (ou parte dela) dentro de crases simples para criar a caixinha
+                            linha = f"` {nome} • {versao} • {status_emoji} `"
                             
                             nome_lower = nome.lower()
                             plataforma = str(exp.get("platform", "")).lower()
@@ -85,37 +86,50 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    # Criamos o Embed
-                    embed = discord.Embed(
-                        title="WhatExpsAre.Online | Exploit Status",
-                        color=discord.Color.from_rgb(40, 40, 45)
-                    )
+                    hora_portugal = datetime.now(ZoneInfo("Europe/Lisbon")).strftime('%H:%M')
+                    lista_embeds = []
                     
-                    # Adicionamos cada categoria como um Field separado (a estrutura em blocos)
+                    # Cada categoria vira uma caixa (embed) separada, idêntico à imagem de referência
                     if windows_exploits:
-                        embed.add_field(name="Windows Exploits", value="\n".join(windows_exploits), inline=False)
-                    
+                        embed_win = discord.Embed(
+                            title="Windows Exploits",
+                            description="\n".join(windows_exploits),
+                            color=discord.Color.from_rgb(30, 31, 34) # Tom de cinza escuro clean do Discord
+                        )
+                        embed_win.set_footer(text=f"🕒 Atualizado às {hora_portugal}", icon_url="https://img.icons8.com/ios-filled/50/ffffff/clock--v1.png")
+                        lista_embeds.append(embed_win)
+                        
                     if mac_exploits:
-                        embed.add_field(name="Mac Exploits", value="\n".join(mac_exploits), inline=False)
+                        embed_mac = discord.Embed(
+                            title="Mac Exploits",
+                            description="\n".join(mac_exploits),
+                            color=discord.Color.from_rgb(30, 31, 34)
+                        )
+                        embed_mac.set_footer(text=f"🕒 Atualizado às {hora_portugal}", icon_url="https://img.icons8.com/ios-filled/50/ffffff/clock--v1.png")
+                        lista_embeds.append(embed_mac)
                         
                     if windows_externals:
-                        embed.add_field(name="Windows Externals", value="\n".join(windows_externals), inline=False)
-                    
-                    hora_portugal = datetime.now(ZoneInfo("Europe/Lisbon")).strftime('%H:%M')
-                    embed.set_footer(text=f"Powered by weao.xyz • Atualizado às {hora_portugal}")
-                    
+                        embed_ext = discord.Embed(
+                            title="Windows Externals",
+                            description="\n".join(windows_externals),
+                            color=discord.Color.from_rgb(30, 31, 34)
+                        )
+                        embed_ext.set_footer(text=f"🕒 Atualizado às {hora_portugal}", icon_url="https://img.icons8.com/ios-filled/50/ffffff/clock--v1.png")
+                        lista_embeds.append(embed_ext)
+                        
                 else:
-                    embed = discord.Embed(
+                    embed_erro = discord.Embed(
                         title="Erro",
                         description="⚠️ Erro ao aceder à API de status da WEAO.",
                         color=discord.Color.red()
                     )
+                    lista_embeds = [embed_erro]
 
         mensagem_editada = False
         if id_ultima_mensagem:
             try:
                 msg = await canal.fetch_message(id_ultima_mensagem)
-                await msg.edit(embed=embed)
+                await msg.edit(embeds=lista_embeds)
                 print("Mensagem editada com sucesso.")
                 mensagem_editada = True
             except (discord.NotFound, discord.HTTPException):
@@ -129,9 +143,9 @@ async def enviar_ou_atualizar():
             except Exception:
                 pass
                 
-            nova_msg = await canal.send(embed=embed)
+            nova_msg = await canal.send(embeds=lista_embeds)
             id_ultima_mensagem = nova_msg.id
-            print("Nova mensagem enviada.")
+            print("Nova mensagem enviada com múltiplos embeds.")
             
     except Exception as e:
         print(f"Erro crítico apanhado no loop principal: {e}")
@@ -140,7 +154,6 @@ async def enviar_ou_atualizar():
 async def antes_de_comecar():
     await bot.wait_until_ready()
 
-# --- Servidor HTTP para satisfazer o Web Service do Render ---
 async def handle(request):
     return web.Response(text="Bot do Discord a funcionar 24/7!")
 
