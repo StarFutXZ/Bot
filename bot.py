@@ -93,11 +93,13 @@ async def enviar_ou_atualizar():
                         textos_corpo.append("\n**Windows Externals**\n" + "\n".join(windows_externals))
                         
                     corpo_texto = "\n".join(textos_corpo).strip()
+                    
+                    hora_portugal = datetime.now(ZoneInfo("Europe/Lisbon")).strftime('%H:%M')
+                    footer_texto = f"Provided by weao.xyz • Atualizado às {hora_portugal}"
+                    
                     ultimo_conteudo_enviado = corpo_texto
 
-                    # Envolve o texto numa crase para criar o efeito de caixa cinzenta igual à imagem
-                    footer_texto = "Auto-updated. Last check: `há poucos segundos`"
-
+                    # Payload corrigido com a estrutura correta de itens para o Media Gallery (type 12)
                     payload = {
                         "flags": 32768,
                         "components": [
@@ -105,7 +107,7 @@ async def enviar_ou_atualizar():
                                 "type": 17,  # Container
                                 "components": [
                                     {
-                                        "type": 12,  # Media Gallery (Imagem do topo)
+                                        "type": 12,  # Media Gallery
                                         "items": [
                                             {
                                                 "media": {
@@ -115,43 +117,21 @@ async def enviar_ou_atualizar():
                                         ]
                                     },
                                     {
-                                        "type": 14,  # Divisor
+                                        "type": 14,  # Divisor logo após a imagem
                                         "divider": True,
                                         "spacing": 1
                                     },
                                     {
-                                        "type": 10,  # Corpo de texto
+                                        "type": 10,
                                         "content": corpo_texto
                                     },
                                     {
-                                        "type": 14,  # Divisor
+                                        "type": 14,  # Divisor antes da última linha/rodapé
                                         "divider": True,
                                         "spacing": 1
                                     },
                                     {
-                                        "type": 1,   # Action Row para os botões de link
-                                        "components": [
-                                            {
-                                                "type": 2,
-                                                "style": 5,
-                                                "label": "Status Page",
-                                                "url": "https://weao.xyz"
-                                            },
-                                            {
-                                                "type": 2,
-                                                "style": 5,
-                                                "label": "Website",
-                                                "url": "https://weao.xyz"
-                                            }
-                                        ]
-                                    },
-                                    {
-                                        "type": 14,  # Divisor antes do rodapé
-                                        "divider": True,
-                                        "spacing": 1
-                                    },
-                                    {
-                                        "type": 10,  # Rodapé com o texto em caixa
+                                        "type": 10,
                                         "content": f"-# {footer_texto}"
                                     }
                                 ]
