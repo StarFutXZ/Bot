@@ -11,77 +11,13 @@ intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 id_ultima_mensagem = None
-ultimo_corpo_texto = ""
-tempo_ultima_verificacao = None
+ultimo_conteudo_enviado = None
 CANAL_ID = 1542669778999574599  # ID do teu canal
-
-def calcular_tempo_relativo():
-    if not tempo_ultima_verificacao:
-        return "há poucos segundos"
-    
-    agora = datetime.now(ZoneInfo("Europe/Lisbon"))
-    diferenca = int((agora - tempo_ultima_verificacao).total_seconds())
-    
-    if diferenca < 10:
-        return "há poucos segundos"
-    elif diferenca < 60:
-        return f"há {diferenca} segundos"
-    elif diferenca < 3600:
-        minutos = diferenca // 60
-        return f"há {minutos} minuto" if minutos == 1 else f"há {minutos} minutos"
-    else:
-        horas = diferenca // 3600
-        return f"há {horas} hora" if horas == 1 else f"há {horas} horas"
-
-def construir_payload(corpo_texto):
-    tempo_relativo = calcular_tempo_relativo()
-    footer_texto = f"Auto-updated. Last check: {tempo_relativo}"
-    
-    return {
-        "flags": 32768,
-        "components": [
-            {
-                "type": 17,  # Container
-                "components": [
-                    {
-                        "type": 12,  # Media Gallery com a imagem do topo
-                        "items": [
-                            {
-                                "media": {
-                                    "url": "https://cdn.discordapp.com/attachments/1379466761354874954/1547849387290656828/real-status.png"
-                                }
-                            }
-                        ]
-                    },
-                    {
-                        "type": 14,  # Divisor
-                        "divider": True,
-                        "spacing": 1
-                    },
-                    {
-                        "type": 10,
-                        "content": corpo_texto
-                    },
-                    {
-                        "type": 14,  # Divisor
-                        "divider": True,
-                        "spacing": 1
-                    },
-                    {
-                        "type": 10,
-                        "content": f"-# {footer_texto}"
-                    }
-                ]
-            }
-        ]
-    }
 
 @bot.event
 async def on_ready():
-    global id_ultima_mensagem, tempo_ultima_verificacao
+    global id_ultima_mensagem
     print(f"Bot ligado com sucesso como {bot.user}")
-    
-    tempo_ultima_verificacao = datetime.now(ZoneInfo("Europe/Lisbon"))
     
     try:
         canal = await bot.fetch_channel(CANAL_ID)
@@ -93,20 +29,23 @@ async def on_ready():
     except Exception as e:
         print(f"Erro ao procurar mensagem anterior: {e}")
 
-    if not sincronizar_api.is_running():
-        sincronizar_api.start()
-        print("Loop principal da API (15 min) iniciado!")
-        
-    if not atualizar_tempo_ui.is_running():
-        atualizar_tempo_ui.start()
-        print("Loop de atualização visual do tempo (1 min) iniciado!")
+    if not enviar_ou_atualizar.is_running():
+        enviar_ou_atualizar.start()
+        print("Loop de 15 minutos iniciado com sucesso!")
 
 @tasks.loop(minutes=15)
-async def sincronizar_api():
-    global ultimo_corpo_texto, tempo_ultima_verificacao, id_ultima_mensagem
+async def enviar_ou_atualizar():
+    global id_ultima_mensagem, ultimo_conteudo_enviado
     
     try:
         print("A verificar atualizações da API WEAO...")
+        
+        try:
+            canal = await bot.fetch_channel(CANAL_ID)
+        except (discord.NotFound, discord.Forbidden):
+            print("Erro ao aceder ao canal do Discord.")
+            return
+
         url = "https://weao.xyz/api/status/exploits"
         headers = {"User-Agent": "WEAO-3PService"}
         
@@ -114,7 +53,6 @@ async def sincronizar_api():
             async with session.get(url, timeout=30) as response:
                 if response.status == 200:
                     dados = await response.json()
-                    tempo_ultima_verificacao = datetime.now(ZoneInfo("Europe/Lisbon"))
                     
                     windows_exploits = []
                     mac_exploits = []
@@ -154,50 +92,124 @@ async def sincronizar_api():
                     if windows_externals:
                         textos_corpo.append("\n**Windows Externals**\n" + "\n".join(windows_externals))
                         
-                    ultimo_corpo_texto = "\n".join(textos_corpo).strip()
-                    payload = construir_payload(ultimo_corpo_texto)
+                    corpo_texto = "\n".join(textos_corpo).strip()
+                    ultimo_conteudo_enviado = corpo_texto
 
-                    async with aiohttp.ClientSession() as session_disc:
-                        headers_discord = {
-                            "Authorization": f"Bot {os.environ.get('DISCORD_TOKEN')}",
-                            "Content-Type": "application/json"
-                        }
-                        
-                        if id_ultima_mensagem:
-                            edit_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages/{id_ultima_mensagem}"
-                            async with session_disc.patch(edit_url, json=payload, headers=headers_discord) as resp:
-                                if resp.status == 200:
-                                    return
+                    # Envolve o texto numa crase para criar o efeito de caixa cinzenta igual à imagem
+                    footer_texto = "Auto-updated. Last check: `há poucos segundos`"
 
-                        send_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages"
-                        async with session_disc.post(send_url, json=payload, headers=headers_discord) as resp:
-                            if resp.status == 200:
-                                data_resp = await resp.json()
-                                id_ultima_mensagem = data_resp.get("id")
-    except Exception as e:
-        print(f"Erro no loop da API: {e}")
+                    payload = {
+                        "flags": 32768,
+                        "components": [
+                            {
+                                "type": 17,  # Container
+                                "components": [
+                                    {
+                                        "type": 12,  # Media Gallery (Imagem do topo)
+                                        "items": [
+                                            {
+                                                "media": {
+                                                    "url": "https://cdn.discordapp.com/attachments/1379466761354874954/1547849387290656828/real-status.png"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": 14,  # Divisor
+                                        "divider": True,
+                                        "spacing": 1
+                                    },
+                                    {
+                                        "type": 10,  # Corpo de texto
+                                        "content": corpo_texto
+                                    },
+                                    {
+                                        "type": 14,  # Divisor
+                                        "divider": True,
+                                        "spacing": 1
+                                    },
+                                    {
+                                        "type": 1,   # Action Row para os botões de link
+                                        "components": [
+                                            {
+                                                "type": 2,
+                                                "style": 5,
+                                                "label": "Status Page",
+                                                "url": "https://weao.xyz"
+                                            },
+                                            {
+                                                "type": 2,
+                                                "style": 5,
+                                                "label": "Website",
+                                                "url": "https://weao.xyz"
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "type": 14,  # Divisor antes do rodapé
+                                        "divider": True,
+                                        "spacing": 1
+                                    },
+                                    {
+                                        "type": 10,  # Rodapé com o texto em caixa
+                                        "content": f"-# {footer_texto}"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                    
+                else:
+                    payload = {
+                        "flags": 32768,
+                        "components": [
+                            {
+                                "type": 17,
+                                "components": [
+                                    {
+                                        "type": 10,
+                                        "content": "⚠️ **Erro**"
+                                    },
+                                    {
+                                        "type": 14,
+                                        "divider": True,
+                                        "spacing": 1
+                                    },
+                                    {
+                                        "type": 10,
+                                        "content": "-# Erro ao aceder à API de status da WEAO."
+                                    }
+                                ]
+                            }
+                        ]
+                    }
 
-@tasks.loop(minutes=1)
-async def atualizar_tempo_ui():
-    global id_ultima_mensagem, ultimo_corpo_texto
-    if not id_ultima_mensagem or not ultimo_corpo_texto:
-        return
-        
-    try:
-        payload = construir_payload(ultimo_corpo_texto)
         async with aiohttp.ClientSession() as session:
             headers_discord = {
                 "Authorization": f"Bot {os.environ.get('DISCORD_TOKEN')}",
                 "Content-Type": "application/json"
             }
-            edit_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages/{id_ultima_mensagem}"
-            async with session.patch(edit_url, json=payload, headers=headers_discord) as resp:
-                pass
-    except Exception as e:
-        print(f"Erro ao atualizar o tempo na UI: {e}")
+            
+            if id_ultima_mensagem:
+                edit_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages/{id_ultima_mensagem}"
+                async with session.patch(edit_url, json=payload, headers=headers_discord) as resp:
+                    if resp.status == 200:
+                        print("Mensagem atualizada com sucesso.")
+                        return
 
-@sincronizar_api.before_loop
-@atualizar_tempo_ui.before_loop
+            send_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages"
+            async with session.post(send_url, json=payload, headers=headers_discord) as resp:
+                if resp.status == 200:
+                    data_resp = await resp.json()
+                    id_ultima_mensagem = data_resp.get("id")
+                    print("Nova mensagem enviada com sucesso.")
+                else:
+                    print(f"Erro ao enviar container: {await resp.text()}")
+            
+    except Exception as e:
+        print(f"Erro crítico apanhado no loop principal: {e}")
+
+@enviar_ou_atualizar.before_loop
 async def antes_de_comecar():
     await bot.wait_until_ready()
 
