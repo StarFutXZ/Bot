@@ -22,7 +22,7 @@ async def on_ready():
     try:
         canal = await bot.fetch_channel(CANAL_ID)
         async for mensagem in canal.history(limit=20):
-            if mensagem.author.id == bot.user.id and mensagem.embeds:
+            if mensagem.author.id == bot.user.id:
                 id_ultima_mensagem = mensagem.id
                 print(f"Mensagem anterior detetada (ID: {id_ultima_mensagem}).")
                 break
@@ -70,9 +70,7 @@ async def enviar_ou_atualizar():
                             atualizado = exp.get("updateStatus", False)
                             
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
-                            
-                            # Formatação visual idêntica à imagem: Emoji • Nome • `Versão` + Emoji de Status
-                            linha = f"{status_emoji} **{nome}** • `v{versao}`"
+                            linha = f"- {nome} | `{versao}` | {status_emoji}"
                             
                             nome_lower = nome.lower()
                             plataforma = str(exp.get("platform", "")).lower()
@@ -86,62 +84,81 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    blocos = []
+                    # Construção dos blocos de texto internos do container
+                    textos_container = []
+                    textos_container.append("### WhatExpsAre.Online | Exploit Status\n")
+                    
                     if windows_exploits:
-                        blocos.append("**Windows Exploits**\n" + "\n".join(windows_exploits))
+                        textos_container.append("**Windows Exploits**\n" + "\n".join(windows_exploits))
                     if mac_exploits:
-                        blocos.append("**Mac Exploits**\n" + "\n".join(mac_exploits))
+                        textos_container.append("\n**Mac Exploits**\n" + "\n".join(mac_exploits))
                     if windows_externals:
-                        blocos.append("**Windows Externals**\n" + "\n".join(windows_externals))
+                        textos_container.append("\n**Windows Externals**\n" + "\n".join(windows_externals))
                         
-                    # Divisória limpa e direta entre categorias
-                    descricao_final = "\n\n".join(blocos)
-                    descricao_final = descricao_final.strip()
-                    
-                    ultimo_conteudo_enviado = descricao_final
-                    
-                    # Criação do Embed com o visual escuro e limpo igual ao do bot da imagem
-                    embed = discord.Embed(
-                        title="Current Mirage Stock",  # Título no mesmo formato da imagem
-                        description=descricao_final,
-                        color=0x111111  # Cor cinza-escura para camuflar com o fundo do Discord
-                    )
+                    corpo_texto = "\n".join(textos_container).strip()
                     
                     hora_portugal = datetime.now(ZoneInfo("Europe/Lisbon")).strftime('%H:%M')
+                    footer_texto = f"⏳ Stock Change in • Atualizado às {hora_portugal}"
                     
-                    # Rodapé simples utilizando apenas texto limpo
-                    embed.set_footer(
-                        text=f"Stock Change in - às {hora_portugal} (weao.xyz)"
-                    )
+                    conteudo_total = f"{corpo_texto}\n\n-# {footer_texto}"
+                    ultimo_conteudo_enviado = conteudo_total
+
+                    # Payload estruturado com Components V2 (Container com accent_color)
+                    payload = {
+                        "flags": 32768,  # IS_COMPONENTS_V2
+                        "components": [
+                            {
+                                "type": 17,  # Container Component
+                                "accent_color": 2829609,  # Cor da barra lateral em formato decimal (equivalente a uma cor escura/cinzenta elegante)
+                                "components": [
+                                    {
+                                        "type": 10,  # TextDisplay Component
+                                        "content": conteudo_total
+                                    }
+                                ]
+                            }
+                        ]
+                    }
                     
                 else:
-                    embed = discord.Embed(
-                        title="Erro",
-                        description="⚠️ Erro ao aceder à API de status da WEAO.",
-                        color=discord.Color.red()
-                    )
+                    payload = {
+                        "flags": 32768,
+                        "components": [
+                            {
+                                "type": 17,
+                                "accent_color": 15158332,
+                                "components": [
+                                    {
+                                        "type": 10,
+                                        "content": "⚠️ **Erro**\n-# Erro ao aceder à API de status da WEAO."
+                                    }
+                                ]
+                            }
+                        ]
+                    }
 
-        mensagem_editada = False
-        if id_ultima_mensagem:
-            try:
-                msg = await canal.fetch_message(id_ultima_mensagem)
-                await msg.edit(embed=embed)
-                print("Mensagem editada com sucesso.")
-                mensagem_editada = True
-            except (discord.NotFound, discord.HTTPException):
-                mensagem_editada = False
+        # Envio utilizando pedidos HTTP diretos à API do Discord (v10)
+        async with aiohttp.ClientSession() as session:
+            headers_discord = {
+                "Authorization": f"Bot {os.environ.get('DISCORD_TOKEN')}",
+                "Content-Type": "application/json"
+            }
+            
+            if id_ultima_mensagem:
+                edit_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages/{id_ultima_mensagem}"
+                async with session.patch(edit_url, json=payload, headers=headers_discord) as resp:
+                    if resp.status == 200:
+                        print("Mensagem em Container V2 editada com sucesso.")
+                        return
 
-        if not mensagem_editada:
-            try:
-                async for mensagem in canal.history(limit=10):
-                    if mensagem.author.id == bot.user.id:
-                        await mensagem.delete()
-            except Exception:
-                pass
-                
-            nova_msg = await canal.send(embed=embed)
-            id_ultima_mensagem = nova_msg.id
-            print("Nova mensagem enviada.")
+            send_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages"
+            async with session.post(send_url, json=payload, headers=headers_discord) as resp:
+                if resp.status == 200:
+                    data_resp = await resp.json()
+                    id_ultima_mensagem = data_resp.get("id")
+                    print("Nova mensagem em Container V2 enviada com sucesso.")
+                else:
+                    print(f"Erro ao enviar Container V2: {await resp.text()}")
             
     except Exception as e:
         print(f"Erro crítico apanhado no loop principal: {e}")
@@ -150,7 +167,6 @@ async def enviar_ou_atualizar():
 async def antes_de_comecar():
     await bot.wait_until_ready()
 
-# --- Servidor HTTP para satisfazer o Web Service do Render ---
 async def handle(request):
     return web.Response(text="Bot do Discord a funcionar 24/7!")
 
