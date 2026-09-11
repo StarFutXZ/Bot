@@ -1,4 +1,4 @@
-Import discord
+import discord
 from discord.ext import tasks, commands
 import aiohttp
 import os
@@ -70,6 +70,7 @@ async def enviar_ou_atualizar():
                             atualizado = exp.get("updateStatus", False)
                             
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
+                            # Aqui envolvemos a versão entre crases para criar o efeito de caixinha cinza
                             linha = f"{nome} | `{versao}` | {status_emoji}"
                             
                             nome_lower = nome.lower()
@@ -84,24 +85,21 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    blocos = []
-                    if windows_exploits:
-                        blocos.append("**Windows Exploits**\n" + "\n".join(windows_exploits))
-                    if mac_exploits:
-                        blocos.append("**Mac Exploits**\n" + "\n".join(mac_exploits))
-                    if windows_externals:
-                        blocos.append("**Windows Externals**\n" + "\n".join(windows_externals))
-                        
-                    descricao_final = "\n\n──────────────────────────────\n\n".join(blocos)
-                    descricao_final = descricao_final.strip()
-                    
-                    ultimo_conteudo_enviado = descricao_final
-                    
+                    # Criamos o Embed
                     embed = discord.Embed(
                         title="WhatExpsAre.Online | Exploit Status",
-                        description=descricao_final,
                         color=discord.Color.from_rgb(40, 40, 45)
                     )
+                    
+                    # Adicionamos cada categoria como um Field separado (a estrutura em blocos)
+                    if windows_exploits:
+                        embed.add_field(name="Windows Exploits", value="\n".join(windows_exploits), inline=False)
+                    
+                    if mac_exploits:
+                        embed.add_field(name="Mac Exploits", value="\n".join(mac_exploits), inline=False)
+                        
+                    if windows_externals:
+                        embed.add_field(name="Windows Externals", value="\n".join(windows_externals), inline=False)
                     
                     hora_portugal = datetime.now(ZoneInfo("Europe/Lisbon")).strftime('%H:%M')
                     embed.set_footer(text=f"Powered by weao.xyz • Atualizado às {hora_portugal}")
