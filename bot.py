@@ -71,8 +71,8 @@ async def enviar_ou_atualizar():
                             
                             status_emoji = "<:zw_check:1542714478322393139>" if atualizado else "<:zw_x:1542714561717731368>"
                             
-                            # O TRUQUE DO VISUAL CLEAN: Colocar a linha inteira (ou parte dela) dentro de crases simples para criar a caixinha
-                            linha = f"` {nome} • {versao} • {status_emoji} `"
+                            # Formatação visual idêntica à imagem: Emoji • Nome • `Versão` + Emoji de Status
+                            linha = f"{status_emoji} **{nome}** • `v{versao}`"
                             
                             nome_lower = nome.lower()
                             plataforma = str(exp.get("platform", "")).lower()
@@ -86,50 +86,46 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    hora_portugal = datetime.now(ZoneInfo("Europe/Lisbon")).strftime('%H:%M')
-                    lista_embeds = []
-                    
-                    # Cada categoria vira uma caixa (embed) separada, idêntico à imagem de referência
+                    blocos = []
                     if windows_exploits:
-                        embed_win = discord.Embed(
-                            title="Windows Exploits",
-                            description="\n".join(windows_exploits),
-                            color=discord.Color.from_rgb(30, 31, 34) # Tom de cinza escuro clean do Discord
-                        )
-                        embed_win.set_footer(text=f"🕒 Atualizado às {hora_portugal}", icon_url="https://img.icons8.com/ios-filled/50/ffffff/clock--v1.png")
-                        lista_embeds.append(embed_win)
-                        
+                        blocos.append("**Windows Exploits**\n" + "\n".join(windows_exploits))
                     if mac_exploits:
-                        embed_mac = discord.Embed(
-                            title="Mac Exploits",
-                            description="\n".join(mac_exploits),
-                            color=discord.Color.from_rgb(30, 31, 34)
-                        )
-                        embed_mac.set_footer(text=f"🕒 Atualizado às {hora_portugal}", icon_url="https://img.icons8.com/ios-filled/50/ffffff/clock--v1.png")
-                        lista_embeds.append(embed_mac)
-                        
+                        blocos.append("**Mac Exploits**\n" + "\n".join(mac_exploits))
                     if windows_externals:
-                        embed_ext = discord.Embed(
-                            title="Windows Externals",
-                            description="\n".join(windows_externals),
-                            color=discord.Color.from_rgb(30, 31, 34)
-                        )
-                        embed_ext.set_footer(text=f"🕒 Atualizado às {hora_portugal}", icon_url="https://img.icons8.com/ios-filled/50/ffffff/clock--v1.png")
-                        lista_embeds.append(embed_ext)
+                        blocos.append("**Windows Externals**\n" + "\n".join(windows_externals))
                         
+                    # Divisória limpa e direta entre categorias
+                    descricao_final = "\n\n".join(blocos)
+                    descricao_final = descricao_final.strip()
+                    
+                    ultimo_conteudo_enviado = descricao_final
+                    
+                    # Criação do Embed com o visual escuro e limpo igual ao do bot da imagem
+                    embed = discord.Embed(
+                        title="Current Mirage Stock",  # Título no mesmo formato da imagem
+                        description=descricao_final,
+                        color=0x111111  # Cor cinza-escura para camuflar com o fundo do Discord
+                    )
+                    
+                    hora_portugal = datetime.now(ZoneInfo("Europe/Lisbon")).strftime('%H:%M')
+                    
+                    # Rodapé simples utilizando apenas texto limpo
+                    embed.set_footer(
+                        text=f"Stock Change in - às {hora_portugal} (weao.xyz)"
+                    )
+                    
                 else:
-                    embed_erro = discord.Embed(
+                    embed = discord.Embed(
                         title="Erro",
                         description="⚠️ Erro ao aceder à API de status da WEAO.",
                         color=discord.Color.red()
                     )
-                    lista_embeds = [embed_erro]
 
         mensagem_editada = False
         if id_ultima_mensagem:
             try:
                 msg = await canal.fetch_message(id_ultima_mensagem)
-                await msg.edit(embeds=lista_embeds)
+                await msg.edit(embed=embed)
                 print("Mensagem editada com sucesso.")
                 mensagem_editada = True
             except (discord.NotFound, discord.HTTPException):
@@ -143,9 +139,9 @@ async def enviar_ou_atualizar():
             except Exception:
                 pass
                 
-            nova_msg = await canal.send(embeds=lista_embeds)
+            nova_msg = await canal.send(embed=embed)
             id_ultima_mensagem = nova_msg.id
-            print("Nova mensagem enviada com múltiplos embeds.")
+            print("Nova mensagem enviada.")
             
     except Exception as e:
         print(f"Erro crítico apanhado no loop principal: {e}")
@@ -154,6 +150,7 @@ async def enviar_ou_atualizar():
 async def antes_de_comecar():
     await bot.wait_until_ready()
 
+# --- Servidor HTTP para satisfazer o Web Service do Render ---
 async def handle(request):
     return web.Response(text="Bot do Discord a funcionar 24/7!")
 
