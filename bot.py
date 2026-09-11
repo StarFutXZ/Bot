@@ -102,16 +102,15 @@ async def enviar_ou_atualizar():
                     conteudo_total = f"{corpo_texto}\n\n-# {footer_texto}"
                     ultimo_conteudo_enviado = conteudo_total
 
-                    # Payload utilizando componentes V2 para eliminar o embed tradicional e aplicar o container com barra lateral
+                    # Payload sem o "accent_color" para remover totalmente a linha lateral
                     payload = {
-                        "flags": 32768,  # Ativa o modo de componentes V2
+                        "flags": 32768,
                         "components": [
                             {
-                                "type": 17,  # Componente do tipo Container
-                                "accent_color": 2829609,  # Cor da barra lateral do container
+                                "type": 17,  # Container sem cor lateral
                                 "components": [
                                     {
-                                        "type": 10,  # Componente do tipo TextDisplay para o conteúdo interno
+                                        "type": 10,
                                         "content": conteudo_total
                                     }
                                 ]
@@ -125,7 +124,6 @@ async def enviar_ou_atualizar():
                         "components": [
                             {
                                 "type": 17,
-                                "accent_color": 15158332,
                                 "components": [
                                     {
                                         "type": 10,
@@ -136,7 +134,6 @@ async def enviar_ou_atualizar():
                         ]
                     }
 
-        # Envio e edição via API REST v10 do Discord
         async with aiohttp.ClientSession() as session:
             headers_discord = {
                 "Authorization": f"Bot {os.environ.get('DISCORD_TOKEN')}",
@@ -147,7 +144,7 @@ async def enviar_ou_atualizar():
                 edit_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages/{id_ultima_mensagem}"
                 async with session.patch(edit_url, json=payload, headers=headers_discord) as resp:
                     if resp.status == 200:
-                        print("Mensagem em Container V2 editada com sucesso.")
+                        print("Mensagem em Container V2 (sem linha) editada com sucesso.")
                         return
 
             send_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages"
@@ -155,7 +152,7 @@ async def enviar_ou_atualizar():
                 if resp.status == 200:
                     data_resp = await resp.json()
                     id_ultima_mensagem = data_resp.get("id")
-                    print("Nova mensagem em Container V2 enviada com sucesso.")
+                    print("Nova mensagem em Container V2 (sem linha) enviada com sucesso.")
                 else:
                     print(f"Erro ao enviar Container V2: {await resp.text()}")
             
