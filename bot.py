@@ -69,7 +69,7 @@ async def enviar_ou_atualizar():
                             versao = exp.get("version", "")
                             atualizado = exp.get("updateStatus", False)
                             
-                            status_emoji = "<a:zw_check:1547788778062479482>" if atualizado else "<a:zw_x:1547788866407104563>"
+                            status_emoji = "<a:zw_GreenCircle:1547795863433248808>" if atualizado else "<a:zw_RedCircle:1547796044316811354>"
                             linha = f"- {nome} | `{versao}` | {status_emoji}"
                             
                             nome_lower = nome.lower()
