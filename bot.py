@@ -99,7 +99,7 @@ async def enviar_ou_atualizar():
                     
                     ultimo_conteudo_enviado = corpo_texto
 
-                    # Payload com o componente de imagem (type 12) substituindo o título original
+                    # Payload corrigido com a estrutura correta de itens para o Media Gallery (type 12)
                     payload = {
                         "flags": 32768,
                         "components": [
@@ -107,10 +107,14 @@ async def enviar_ou_atualizar():
                                 "type": 17,  # Container
                                 "components": [
                                     {
-                                        "type": 12,  # Componente de imagem no Discord v2 containers
-                                        "media": {
-                                            "url": "https://cdn.discordapp.com/attachments/1379466761354874954/1547849387290656828/real-status.png"
-                                        }
+                                        "type": 12,  # Media Gallery
+                                        "items": [
+                                            {
+                                                "media": {
+                                                    "url": "https://cdn.discordapp.com/attachments/1379466761354874954/1547849387290656828/real-status.png"
+                                                }
+                                            }
+                                        ]
                                     },
                                     {
                                         "type": 14,  # Divisor logo após a imagem
@@ -170,7 +174,7 @@ async def enviar_ou_atualizar():
                 edit_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages/{id_ultima_mensagem}"
                 async with session.patch(edit_url, json=payload, headers=headers_discord) as resp:
                     if resp.status == 200:
-                        print("Mensagem atualizada com a imagem no topo com sucesso.")
+                        print("Mensagem atualizada com sucesso.")
                         return
 
             send_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages"
