@@ -84,34 +84,42 @@ async def enviar_ou_atualizar():
                             else:
                                 windows_exploits.append(linha)
                     
-                    textos_container = []
-                    textos_container.append("### WhatExpsAre.Online | Exploit Status\n")
-                    
+                    # Corpo apenas com os status (o título fica num componente separado para poder levar a linha logo abaixo)
+                    textos_corpo = []
                     if windows_exploits:
-                        textos_container.append("**Windows Exploits**\n" + "\n".join(windows_exploits))
+                        textos_corpo.append("**Windows Exploits**\n" + "\n".join(windows_exploits))
                     if mac_exploits:
-                        textos_container.append("\n**Mac Exploits**\n" + "\n".join(mac_exploits))
+                        textos_corpo.append("\n**Mac Exploits**\n" + "\n".join(mac_exploits))
                     if windows_externals:
-                        textos_container.append("\n**Windows Externals**\n" + "\n".join(windows_externals))
+                        textos_corpo.append("\n**Windows Externals**\n" + "\n".join(windows_externals))
                         
-                    corpo_texto = "\n".join(textos_container).strip()
+                    corpo_texto = "\n".join(textos_corpo).strip()
                     
                     hora_portugal = datetime.now(ZoneInfo("Europe/Lisbon")).strftime('%H:%M')
                     footer_texto = f"⏳ Stock Change in • Atualizado às {hora_portugal}"
                     
-                    conteudo_total = f"{corpo_texto}\n\n-# {footer_texto}"
-                    ultimo_conteudo_enviado = conteudo_total
+                    conteudo_corpo_total = f"{corpo_texto}\n\n-# {footer_texto}"
+                    ultimo_conteudo_enviado = conteudo_corpo_total
 
-                    # Payload sem o "accent_color" para remover totalmente a linha lateral
+                    # Payload com Container dividindo o título, a linha divisória (type 14) e o corpo
                     payload = {
                         "flags": 32768,
                         "components": [
                             {
-                                "type": 17,  # Container sem cor lateral
+                                "type": 17,  # Container
                                 "components": [
                                     {
                                         "type": 10,
-                                        "content": conteudo_total
+                                        "content": "### WhatExpsAre.Online | Exploit Status"
+                                    },
+                                    {
+                                        "type": 14,  # Separator / Divider component
+                                        "divider": True,
+                                        "spacing": 1
+                                    },
+                                    {
+                                        "type": 10,
+                                        "content": conteudo_corpo_total
                                     }
                                 ]
                             }
@@ -127,7 +135,16 @@ async def enviar_ou_atualizar():
                                 "components": [
                                     {
                                         "type": 10,
-                                        "content": "⚠️ **Erro**\n-# Erro ao aceder à API de status da WEAO."
+                                        "content": "⚠️ **Erro**"
+                                    },
+                                    {
+                                        "type": 14,
+                                        "divider": True,
+                                        "spacing": 1
+                                    },
+                                    {
+                                        "type": 10,
+                                        "content": "-# Erro ao aceder à API de status da WEAO."
                                     }
                                 ]
                             }
@@ -144,7 +161,7 @@ async def enviar_ou_atualizar():
                 edit_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages/{id_ultima_mensagem}"
                 async with session.patch(edit_url, json=payload, headers=headers_discord) as resp:
                     if resp.status == 200:
-                        print("Mensagem em Container V2 (sem linha) editada com sucesso.")
+                        print("Mensagem com linha divisória editada com sucesso.")
                         return
 
             send_url = f"https://discord.com/api/v10/channels/{CANAL_ID}/messages"
@@ -152,9 +169,9 @@ async def enviar_ou_atualizar():
                 if resp.status == 200:
                     data_resp = await resp.json()
                     id_ultima_mensagem = data_resp.get("id")
-                    print("Nova mensagem em Container V2 (sem linha) enviada com sucesso.")
+                    print("Nova mensagem com linha divisória enviada com sucesso.")
                 else:
-                    print(f"Erro ao enviar Container V2: {await resp.text()}")
+                    print(f"Erro ao enviar container com linha: {await resp.text()}")
             
     except Exception as e:
         print(f"Erro crítico apanhado no loop principal: {e}")
